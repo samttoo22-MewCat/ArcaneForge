@@ -102,16 +102,86 @@
     }
   ],
   "connections": [
-    {"from": "room_town_square", "to": "room_inn_main", "direction": "north", "is_locked": false, "is_hidden": false},
-    {"from": "room_inn_main", "to": "room_town_square", "direction": "south", "is_locked": false, "is_hidden": false},
-    {"from": "room_town_square", "to": "room_town_gate", "direction": "north", "is_locked": false, "is_hidden": false},
-    {"from": "room_town_gate", "to": "room_town_square", "direction": "south", "is_locked": false, "is_hidden": false},
-    {"from": "room_town_gate", "to": "room_wilds_path", "direction": "north", "is_locked": false, "is_hidden": false},
-    {"from": "room_wilds_path", "to": "room_town_gate", "direction": "south", "is_locked": false, "is_hidden": false},
-    {"from": "room_wilds_path", "to": "room_cave_entrance", "direction": "north", "is_locked": false, "is_hidden": false},
-    {"from": "room_cave_entrance", "to": "room_wilds_path", "direction": "south", "is_locked": false, "is_hidden": false},
-    {"from": "room_cave_entrance", "to": "room_cave_main_hall", "direction": "in", "is_locked": true, "requires_key_id": "key_dungeon_01", "is_hidden": false},
-    {"from": "room_cave_main_hall", "to": "room_cave_entrance", "direction": "out", "is_locked": false, "is_hidden": false}
+    {
+      "from": "room_town_square", "to": "room_inn_main",
+      "direction": "in",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 3,
+      "exit_description": "北邊是紅月旅店的木製大門，門縫透出溫暖的橘色燈光與食物香氣。",
+      "transition_description": "你推開旅店厚重的木門，一股溫熱的空氣迎面撲來。"
+    },
+    {
+      "from": "room_inn_main", "to": "room_town_square",
+      "direction": "out",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 3,
+      "exit_description": "南邊的大門通往石橋鎮廣場，能隱約聽見外頭的喧嚷聲。",
+      "transition_description": "你走出旅店，冷空氣讓你不禁縮了縮脖子。"
+    },
+    {
+      "from": "room_town_square", "to": "room_town_gate",
+      "direction": "north",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 8,
+      "exit_description": "廣場北端是一條鋪著石板的主街，遠處能看見厚重的城門。",
+      "transition_description": "你沿著石板街道一路向北，走向城鎮的北門。"
+    },
+    {
+      "from": "room_town_gate", "to": "room_town_square",
+      "direction": "south",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 8,
+      "exit_description": "南邊的石板大道通往鎮中心廣場，遠處有水井的輪廓。",
+      "transition_description": "你沿著主街向南走回廣場。"
+    },
+    {
+      "from": "room_town_gate", "to": "room_wilds_path",
+      "direction": "north",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 15,
+      "exit_description": "城門外是一條蜿蜒的土路，兩側灌木叢中不時傳來不明聲響。",
+      "transition_description": "你穿過城門，衛兵用懷疑的眼神看著你離去。城牆的保護感漸漸消失在身後。"
+    },
+    {
+      "from": "room_wilds_path", "to": "room_town_gate",
+      "direction": "south",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 15,
+      "exit_description": "南邊不遠處是石橋鎮的城牆，城門開著，衛兵的身影依稀可辨。",
+      "transition_description": "你快步向南，走回石橋鎮的城牆保護範圍內。"
+    },
+    {
+      "from": "room_wilds_path", "to": "room_cave_entrance",
+      "direction": "north",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 20,
+      "exit_description": "荒野小徑繼續向北延伸，越來越崎嶇。遠處山壁上隱約有個黑洞。",
+      "transition_description": "你穿過愈來愈茂密的荒草，攀上碎石坡，走向那個散發著腐臭的黑暗洞口。"
+    },
+    {
+      "from": "room_cave_entrance", "to": "room_wilds_path",
+      "direction": "south",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 20,
+      "exit_description": "洞口外是陡峭的碎石坡，遠方隱約可見荒野小徑和石橋鎮的方向。",
+      "transition_description": "你從洞口退出，踩著碎石一路滑下坡，重新踏上荒野小徑。"
+    },
+    {
+      "from": "room_cave_entrance", "to": "room_cave_main_hall",
+      "direction": "in",
+      "is_locked": true, "requires_key_id": "key_dungeon_01", "is_hidden": false,
+      "travel_time_seconds": 8,
+      "exit_description": "洞穴深處是一扇生鏽的鐵門，鎖孔形狀古怪。門縫透出模糊的橘紅色光芒，偶爾有影子晃過。",
+      "transition_description": "你用地牢鑰匙費力地轉開鐵鎖，推開沉重的鐵門，一股混合著肉腥味與燃油的熱氣撲面而來。"
+    },
+    {
+      "from": "room_cave_main_hall", "to": "room_cave_entrance",
+      "direction": "out",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 8,
+      "exit_description": "東側有一扇厚重的鐵門虛掩著，門外透入一絲清涼的空氣。",
+      "transition_description": "你向鐵門方向衝去，用肩膀撞開它，跌跌撞撞地退回洞穴入口。"
+    }
   ],
   "initial_npcs": [
     {"template": "innkeeper", "place_id": "room_inn_main", "id": "npc_innkeeper_01"},

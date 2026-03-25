@@ -86,6 +86,30 @@ async def test_full_queue_removes_dead_connection(bus):
     assert bus.connection_count == 0
 
 
+async def test_move_player_by_id_updates_routing(bus):
+    """move_player() looks up the queue by player_id and reroutes it."""
+    q = await bus.subscribe("hero", room_id="room_A", middle_id="mid_01")
+
+    await bus.move_player("hero", new_room_id="room_B", new_middle_id="mid_02")
+
+    await bus.publish_room("room_B", {"event": "new_room_event"})
+    assert not q.empty()
+    assert q.get_nowait() == {"event": "new_room_event"}
+
+    # Old room should no longer reach this player
+    await bus.publish_room("room_A", {"event": "old_room_event"})
+    assert q.empty()
+
+    # New middle should reach this player
+    await bus.publish_middle("mid_02", {"event": "mid_event"})
+    assert not q.empty()
+
+    # Old middle should no longer reach this player
+    q.get_nowait()  # drain
+    await bus.publish_middle("mid_01", {"event": "old_mid_event"})
+    assert q.empty()
+
+
 async def test_move_subscriber_updates_routing(bus):
     q = await bus.subscribe("p1", room_id="room_A", middle_id="mid_01")
 

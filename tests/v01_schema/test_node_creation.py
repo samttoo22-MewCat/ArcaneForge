@@ -72,3 +72,12 @@ class TestRuleEngine:
     def test_can_use_free_action_valid(self):
         player = {"hp": 10, "status_effects": []}
         can_use_free_action(player)
+
+    def test_can_move_while_traveling_raises(self):
+        player = {"hp": 10, "is_in_combat": False, "is_traveling": True}
+        with pytest.raises(RuleError, match="移動途中"):
+            can_move(player, {}, {"is_locked": False, "is_hidden": False})
+
+    def test_can_move_not_traveling_valid(self):
+        player = {"hp": 10, "is_in_combat": False, "is_traveling": False}
+        can_move(player, {}, {"is_locked": False, "is_hidden": False})

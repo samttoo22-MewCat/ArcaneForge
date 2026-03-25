@@ -12,6 +12,8 @@ def can_move(player: dict, target_place: dict, edge: dict) -> None:
         raise RuleError("你已經死亡，無法移動。")
     if player.get("is_in_combat"):
         raise RuleError("你正在戰鬥中，無法移動。")
+    if player.get("is_traveling"):
+        raise RuleError("你正在移動途中，請稍後再試。")
     if edge.get("is_locked"):
         raise RuleError("通道已上鎖。")
     if edge.get("is_hidden"):

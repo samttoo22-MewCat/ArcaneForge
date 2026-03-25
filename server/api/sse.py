@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
 from server.broadcast.sse_manager import sse_stream
@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.get("/events")
 async def events(
-    request,
+    request: Request,
     player_id: str = Query(...),
     graph=Depends(get_graph),
     bus: EventBus = Depends(get_event_bus),

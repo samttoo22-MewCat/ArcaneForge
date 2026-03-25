@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Server
     server_host: str = "0.0.0.0"
-    server_port: int = 8000
+    server_port: int = 3031
     debug: bool = False
     log_level: str = "info"
 

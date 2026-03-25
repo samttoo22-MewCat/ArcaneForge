@@ -1,6 +1,23 @@
 """Repository for NPC nodes."""
+import json
 import time
 from typing import Optional
+
+
+def _sanitize_props(props: dict) -> dict:
+    """
+    FalkorDB only supports primitive types and arrays of primitives.
+    Serialize any list-of-dicts or nested-dict values as JSON strings.
+    """
+    clean = {}
+    for k, v in props.items():
+        if isinstance(v, list) and v and isinstance(v[0], dict):
+            clean[k] = json.dumps(v, ensure_ascii=False)
+        elif isinstance(v, dict):
+            clean[k] = json.dumps(v, ensure_ascii=False)
+        else:
+            clean[k] = v
+    return clean
 
 
 def _node_props(result_set) -> Optional[dict]:
@@ -28,9 +45,10 @@ async def create_npc(graph, props: dict) -> None:
     props.setdefault("is_hibernating", False)
     props.setdefault("frozen_at", None)
     props.setdefault("memory_summary", "")
+    safe_props = _sanitize_props(props)
     await graph.query(
         "MERGE (n:npc {id: $id}) SET n += $props",
-        {"id": props["id"], "props": props},
+        {"id": safe_props["id"], "props": safe_props},
     )
 
 

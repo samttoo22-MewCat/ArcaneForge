@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 -m venv .venv)"
+      "Bash(python3 -m venv .venv)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }

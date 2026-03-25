@@ -85,6 +85,14 @@ def create_app() -> FastAPI:
     app.include_router(dm.router, prefix="/api/v1")
     app.include_router(sse.router)
 
+    # Print all registered routes on startup
+    @app.on_event("startup")
+    async def _print_routes():
+        routes = [(r.methods, r.path) for r in app.routes if hasattr(r, "methods")]
+        print("[routes] Registered endpoints:")
+        for methods, path in sorted(routes, key=lambda x: x[1]):
+            print(f"  {','.join(sorted(methods)):10s}  {path}")
+
     return app
 
 

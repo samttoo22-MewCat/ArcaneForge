@@ -55,6 +55,16 @@ class EventBus:
             self._room_subs[new_room_id].add(queue)
             self._middle_subs[new_middle_id].add(queue)
 
+    async def move_player(self, player_id: str, new_room_id: str, new_middle_id: str) -> None:
+        """Convenience: update routing by player_id (finds queue internally)."""
+        async with self._lock:
+            queue = next(
+                (q for q, s in self._sub_index.items() if s.player_id == player_id),
+                None,
+            )
+        if queue is not None:
+            await self.move_subscriber(queue, new_room_id, new_middle_id)
+
     async def publish_room(self, room_id: str, event: dict) -> None:
         await self._publish_to(self._room_subs.get(room_id, set()), event)
 

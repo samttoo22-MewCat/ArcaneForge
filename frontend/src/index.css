@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #0C0A09;
+  color: #F4EFE8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0D0C0B;
+}
+::-webkit-scrollbar-thumb {
+  background: #3E3A35;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5A5248;
+}
+
+/* ── SVG font classes ── */
+.font-cinzel {
+  font-family: "Cinzel", serif;
+}
+.font-inter {
+  font-family: "Inter", sans-serif;
+}
+.font-mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* ── Cinzel headings keep SVG text crisp ── */
+text.font-cinzel {
+  font-family: "Cinzel", serif;
+}
+text.font-mono {
+  font-family: "JetBrains Mono", monospace;
+}
+text.fill-gold-light {
+  fill: #F0C060;
+}
+text.fill-stone-400 {
+  fill: #B0A89E;
+}
+text.fill-stone-500 {
+  fill: #8A8078;
+}
+text.fill-stone-600 {
+  fill: #625A54;
+}
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid rgba(200,148,30,0.6);
+  outline-offset: 2px;
+}

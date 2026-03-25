@@ -16,7 +16,33 @@ class BaseEvent:
 
 @dataclass
 class PlayerMovedEvent(BaseEvent):
+    """Legacy instant-move event; kept for internal/admin use."""
     event_type: str = "player_moved"
+    player_id: str = ""
+    player_name: str = ""
+    from_place_id: str = ""
+    to_place_id: str = ""
+    direction: str = ""
+
+
+@dataclass
+class PlayerTravelingEvent(BaseEvent):
+    """Broadcast when a player starts moving through a passage."""
+    event_type: str = "player_traveling"
+    player_id: str = ""
+    player_name: str = ""
+    from_place_id: str = ""
+    to_place_id: str = ""
+    direction: str = ""
+    travel_time_seconds: float = 0.0
+    arrives_at: float = 0.0          # Unix timestamp of arrival
+    transition_description: str = "" # Flavour text for the passage
+
+
+@dataclass
+class PlayerArrivedEvent(BaseEvent):
+    """Broadcast when a player completes travel and arrives in a new room."""
+    event_type: str = "player_arrived"
     player_id: str = ""
     player_name: str = ""
     from_place_id: str = ""
