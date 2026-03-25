@@ -1,0 +1,58 @@
+{
+  "burning": {
+    "name": "燃燒",
+    "description": "每回合損失最大 HP 的 5%，可疊加。",
+    "tick_damage_formula": "hp_max * 0.05 * stacks",
+    "duration_base": 3,
+    "stackable": true,
+    "max_stacks": 3,
+    "removes_on": ["water_contact"],
+    "spd_modifier": 1.0,
+    "skips_action": false
+  },
+  "poison": {
+    "name": "中毒",
+    "description": "每回合損失 3 HP（固定值），可疊加。",
+    "tick_damage_formula": "3 * stacks",
+    "duration_base": 5,
+    "stackable": true,
+    "max_stacks": 5,
+    "removes_on": ["antidote"],
+    "spd_modifier": 1.0,
+    "skips_action": false
+  },
+  "stun": {
+    "name": "暈眩",
+    "description": "跳過本回合行動。",
+    "tick_damage_formula": "0",
+    "duration_base": 1,
+    "stackable": false,
+    "max_stacks": 1,
+    "removes_on": [],
+    "spd_modifier": 1.0,
+    "skips_action": true
+  },
+  "slow": {
+    "name": "緩速",
+    "description": "速度減少 50%。",
+    "tick_damage_formula": "0",
+    "duration_base": 2,
+    "stackable": false,
+    "max_stacks": 1,
+    "removes_on": [],
+    "spd_modifier": 0.5,
+    "skips_action": false
+  },
+  "bleed": {
+    "name": "流血",
+    "description": "每回合損失 1d4 HP，治療效果減半，可疊加。",
+    "tick_damage_formula": "1d4 * stacks",
+    "duration_base": 4,
+    "stackable": true,
+    "max_stacks": 3,
+    "removes_on": ["bandage"],
+    "spd_modifier": 1.0,
+    "skips_action": false,
+    "heal_reduction": 0.5
+  }
+}

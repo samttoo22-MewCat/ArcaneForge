@@ -1,0 +1,8 @@
+fastapi==0.115.12
+uvicorn[standard]==0.32.1
+falkordb==1.6.0
+redis==7.2.0
+pydantic==2.12.5
+pydantic-settings==2.13.1
+python-dotenv==1.2.1
+httpx==0.28.1

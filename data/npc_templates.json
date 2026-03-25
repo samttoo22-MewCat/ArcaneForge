@@ -1,0 +1,84 @@
+{
+  "goblin_scout": {
+    "name": "哥布林斥候",
+    "npc_type": "monster",
+    "hp_max": 15,
+    "atk": 5,
+    "def_": 3,
+    "spd": 12,
+    "luk": 4,
+    "behavior_state": "patrol",
+    "faction": "goblin_clan",
+    "hostile_to": ["player"],
+    "memory_summary": "",
+    "loot_table": [
+      {"item_id": "coin_copper", "chance": 0.8, "quantity": {"min": 1, "max": 5}},
+      {"item_id": "dagger_steel", "chance": 0.2, "quantity": {"min": 1, "max": 1}}
+    ]
+  },
+  "goblin_warrior": {
+    "name": "哥布林戰士",
+    "npc_type": "monster",
+    "hp_max": 30,
+    "atk": 9,
+    "def_": 6,
+    "spd": 10,
+    "luk": 3,
+    "behavior_state": "patrol",
+    "faction": "goblin_clan",
+    "hostile_to": ["player"],
+    "memory_summary": "",
+    "loot_table": [
+      {"item_id": "coin_copper", "chance": 0.9, "quantity": {"min": 3, "max": 10}},
+      {"item_id": "sword_iron", "chance": 0.15, "quantity": {"min": 1, "max": 1}}
+    ]
+  },
+  "wolf": {
+    "name": "野狼",
+    "npc_type": "monster",
+    "hp_max": 25,
+    "atk": 8,
+    "def_": 4,
+    "spd": 15,
+    "luk": 6,
+    "behavior_state": "patrol",
+    "faction": "wild_beast",
+    "hostile_to": ["player"],
+    "memory_summary": "",
+    "loot_table": [
+      {"item_id": "herb_red", "chance": 0.3, "quantity": {"min": 1, "max": 2}}
+    ]
+  },
+  "innkeeper": {
+    "name": "旅店老闆娘",
+    "npc_type": "merchant",
+    "hp_max": 50,
+    "atk": 3,
+    "def_": 2,
+    "spd": 8,
+    "luk": 10,
+    "behavior_state": "idle",
+    "faction": "town_folk",
+    "hostile_to": [],
+    "memory_summary": "一位中年女性，在紅月旅店工作多年，見過形形色色的冒險者。",
+    "shop_inventory": [
+      {"item_id": "potion_health_small", "stock": 10, "price": 5},
+      {"item_id": "torch", "stock": 20, "price": 2}
+    ],
+    "loot_table": []
+  },
+  "town_guard": {
+    "name": "城鎮衛兵",
+    "npc_type": "guard",
+    "hp_max": 60,
+    "atk": 12,
+    "def_": 10,
+    "spd": 9,
+    "luk": 5,
+    "behavior_state": "patrol",
+    "faction": "town_guard",
+    "hostile_to": ["criminal"],
+    "memory_summary": "負責維持小鎮秩序的衛兵，對陌生人保持警戒。",
+    "loot_table": []
+  }
+}

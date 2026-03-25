@@ -1,0 +1,129 @@
+{
+  "large_places": [
+    {
+      "id": "region_vale",
+      "name": "翠谷地區",
+      "region_type": "混合",
+      "climate": "溫帶，四季分明",
+      "danger_level": 3,
+      "lore_summary": "一個被森林包圍的古老山谷，中央有一座名為石橋鎮的小城。近年來地下城的怪物活動愈發頻繁。"
+    }
+  ],
+  "middle_places": [
+    {
+      "id": "town_stonbridge",
+      "name": "石橋鎮",
+      "type": "城鎮",
+      "atmosphere": "忙碌但友善，有市集和旅店",
+      "is_instanced": false,
+      "parent_large_id": "region_vale"
+    },
+    {
+      "id": "dungeon_goblin_cave",
+      "name": "哥布林巢穴",
+      "type": "地下城",
+      "atmosphere": "黑暗、潮濕，充滿哥布林的叫聲",
+      "is_instanced": true,
+      "parent_large_id": "region_vale"
+    }
+  ],
+  "small_places": [
+    {
+      "id": "room_town_square",
+      "name": "石橋鎮廣場",
+      "description_base": "石橋鎮的中心廣場，一口古老的水井立在正中央。周圍有商店、旅店和市民日常活動的痕跡。",
+      "light": "明亮",
+      "weather": "晴天",
+      "is_safe_zone": true,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "town_stonbridge"
+    },
+    {
+      "id": "room_inn_main",
+      "name": "紅月旅店大廳",
+      "description_base": "溫暖的旅店大廳，壁爐熊熊燃燒。幾張圓木桌散落在各處，老闆娘正在擦拭吧台。角落有一個告示板。",
+      "light": "明亮",
+      "weather": "室內",
+      "is_safe_zone": true,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "town_stonbridge"
+    },
+    {
+      "id": "room_town_gate",
+      "name": "石橋鎮北門",
+      "description_base": "厚重的木製城門，兩側有衛兵把守。城門外是蜿蜒的石板路，通向荒野。",
+      "light": "明亮",
+      "weather": "晴天",
+      "is_safe_zone": true,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "town_stonbridge"
+    },
+    {
+      "id": "room_wilds_path",
+      "name": "荒野小徑",
+      "description_base": "離開城鎮後的荒野小徑，兩側是茂密的灌木叢。偶爾能聽到遠處野獸的叫聲。地上有陳舊的腳印。",
+      "light": "明亮",
+      "weather": "晴天",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "region_vale"
+    },
+    {
+      "id": "room_cave_entrance",
+      "name": "哥布林巢穴入口",
+      "description_base": "一個低矮的洞窟入口，洞口周圍散落著破碎的骨頭和燃盡的火把。洞內傳來斷斷續續的嚎叫聲。",
+      "light": "昏暗",
+      "weather": "室內",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "dungeon_goblin_cave"
+    },
+    {
+      "id": "room_cave_main_hall",
+      "name": "哥布林巢穴主廳",
+      "description_base": "寬闊的洞窟主廳，幾個生鏽的籠子掛在頂部。地上散落著哥布林的垃圾和骨頭。角落有幾個油桶。",
+      "light": "昏暗",
+      "weather": "室內",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "dungeon_goblin_cave"
+    }
+  ],
+  "connections": [
+    {"from": "room_town_square", "to": "room_inn_main", "direction": "north", "is_locked": false, "is_hidden": false},
+    {"from": "room_inn_main", "to": "room_town_square", "direction": "south", "is_locked": false, "is_hidden": false},
+    {"from": "room_town_square", "to": "room_town_gate", "direction": "north", "is_locked": false, "is_hidden": false},
+    {"from": "room_town_gate", "to": "room_town_square", "direction": "south", "is_locked": false, "is_hidden": false},
+    {"from": "room_town_gate", "to": "room_wilds_path", "direction": "north", "is_locked": false, "is_hidden": false},
+    {"from": "room_wilds_path", "to": "room_town_gate", "direction": "south", "is_locked": false, "is_hidden": false},
+    {"from": "room_wilds_path", "to": "room_cave_entrance", "direction": "north", "is_locked": false, "is_hidden": false},
+    {"from": "room_cave_entrance", "to": "room_wilds_path", "direction": "south", "is_locked": false, "is_hidden": false},
+    {"from": "room_cave_entrance", "to": "room_cave_main_hall", "direction": "in", "is_locked": true, "requires_key_id": "key_dungeon_01", "is_hidden": false},
+    {"from": "room_cave_main_hall", "to": "room_cave_entrance", "direction": "out", "is_locked": false, "is_hidden": false}
+  ],
+  "initial_npcs": [
+    {"template": "innkeeper", "place_id": "room_inn_main", "id": "npc_innkeeper_01"},
+    {"template": "town_guard", "place_id": "room_town_gate", "id": "npc_guard_01"},
+    {"template": "town_guard", "place_id": "room_town_gate", "id": "npc_guard_02"},
+    {"template": "goblin_scout", "place_id": "room_cave_entrance", "id": "npc_goblin_scout_01"},
+    {"template": "goblin_warrior", "place_id": "room_cave_main_hall", "id": "npc_goblin_warrior_01"}
+  ],
+  "initial_items": [
+    {"item_id": "barrel_oil", "instance_id": "item_barrel_cave_01", "place_id": "room_cave_main_hall", "durability": 30, "quantity": 1},
+    {"item_id": "torch", "instance_id": "item_torch_01", "place_id": "room_cave_entrance", "durability": 15, "quantity": 1},
+    {"item_id": "key_dungeon_01", "instance_id": "item_key_01", "place_id": "room_cave_entrance", "durability": 999, "quantity": 1},
+    {"item_id": "potion_health_small", "instance_id": "item_potion_01", "place_id": "room_town_square", "durability": 1, "quantity": 1}
+  ]
+}
