@@ -33,6 +33,25 @@
       {"item_id": "sword_iron", "chance": 0.15, "quantity": {"min": 1, "max": 1}}
     ]
   },
+  "goblin_shaman": {
+    "name": "哥布林巫師",
+    "npc_type": "monster",
+    "hp_max": 20,
+    "atk": 12,
+    "def_": 2,
+    "spd": 8,
+    "luk": 7,
+    "behavior_state": "idle",
+    "faction": "goblin_clan",
+    "hostile_to": ["player"],
+    "element_tags": ["暗影"],
+    "memory_summary": "",
+    "loot_table": [
+      {"item_id": "coin_copper", "chance": 0.7, "quantity": {"min": 2, "max": 8}},
+      {"item_id": "herb_red",    "chance": 0.5, "quantity": {"min": 1, "max": 2}},
+      {"item_id": "vial_glass",  "chance": 0.3, "quantity": {"min": 1, "max": 1}}
+    ]
+  },
   "wolf": {
     "name": "野狼",
     "npc_type": "monster",
@@ -46,7 +65,9 @@
     "hostile_to": ["player"],
     "memory_summary": "",
     "loot_table": [
-      {"item_id": "herb_red", "chance": 0.3, "quantity": {"min": 1, "max": 2}}
+      {"item_id": "herb_red",   "chance": 0.4, "quantity": {"min": 1, "max": 2}},
+      {"item_id": "hide_wolf",  "chance": 0.7, "quantity": {"min": 1, "max": 2}},
+      {"item_id": "coin_copper","chance": 0.5, "quantity": {"min": 1, "max": 3}}
     ]
   },
   "innkeeper": {
@@ -62,8 +83,54 @@
     "hostile_to": [],
     "memory_summary": "一位中年女性，在紅月旅店工作多年，見過形形色色的冒險者。",
     "shop_inventory": [
-      {"item_id": "potion_health_small", "stock": 10, "price": 5},
-      {"item_id": "torch", "stock": 20, "price": 2}
+      {"item_id": "potion_health_small",  "stock": 10, "price": 5},
+      {"item_id": "potion_health_medium", "stock": 5,  "price": 12},
+      {"item_id": "torch",                "stock": 20, "price": 2},
+      {"item_id": "vial_glass",           "stock": 15, "price": 1},
+      {"item_id": "cloth_rag",            "stock": 10, "price": 1}
+    ],
+    "loot_table": []
+  },
+  "blacksmith": {
+    "name": "鐵錘老鍛",
+    "npc_type": "merchant",
+    "hp_max": 80,
+    "atk": 15,
+    "def_": 8,
+    "spd": 6,
+    "luk": 5,
+    "behavior_state": "idle",
+    "faction": "town_folk",
+    "hostile_to": [],
+    "memory_summary": "石橋鎮唯一的鐵匠，雙臂粗壯如樹幹。據說年輕時曾是冒險者，退役後在此開鋪。",
+    "shop_inventory": [
+      {"item_id": "dagger_steel",  "stock": 5,  "price": 18},
+      {"item_id": "sword_iron",    "stock": 3,  "price": 45},
+      {"item_id": "armor_leather", "stock": 3,  "price": 35},
+      {"item_id": "wood_stick",    "stock": 10, "price": 2},
+      {"item_id": "hide_wolf",     "stock": 5,  "price": 6}
+    ],
+    "loot_table": []
+  },
+  "market_trader": {
+    "name": "南市集商販",
+    "npc_type": "merchant",
+    "hp_max": 30,
+    "atk": 2,
+    "def_": 1,
+    "spd": 10,
+    "luk": 12,
+    "behavior_state": "idle",
+    "faction": "town_folk",
+    "hostile_to": [],
+    "memory_summary": "在南市集擺攤的雜貨商，賣什麼的都有，來路不明但價格公道。",
+    "shop_inventory": [
+      {"item_id": "torch",               "stock": 30, "price": 1},
+      {"item_id": "herb_red",            "stock": 8,  "price": 4},
+      {"item_id": "vial_glass",          "stock": 20, "price": 1},
+      {"item_id": "wood_stick",          "stock": 15, "price": 1},
+      {"item_id": "cloth_rag",           "stock": 20, "price": 1},
+      {"item_id": "potion_health_small", "stock": 5,  "price": 6}
     ],
     "loot_table": []
   },

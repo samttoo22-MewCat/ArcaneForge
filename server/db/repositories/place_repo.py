@@ -76,6 +76,44 @@ async def create_small_place(graph, props: dict) -> None:
     )
 
 
+async def get_small_places_in_middle(graph, middle_id: str) -> list[dict]:
+    """Return all small_places belonging to a middle_place (for floor-plan ghost layer)."""
+    r = await graph.query(
+        "MATCH (n:small_place {parent_middle_id: $mid}) RETURN n",
+        {"mid": middle_id},
+    )
+    return [row[0].properties for row in r.result_set]
+
+
+async def get_connections_in_middle(graph, middle_id: str) -> list[dict]:
+    """Return all directed edges between small_places within the same middle_place."""
+    r = await graph.query(
+        "MATCH (a:small_place {parent_middle_id: $mid})-[e:CONNECTS_TO]->"
+        "(b:small_place {parent_middle_id: $mid}) "
+        "RETURN a.id, b.id, e.direction, e.travel_time_seconds, e.is_locked",
+        {"mid": middle_id},
+    )
+    results = []
+    for row in r.result_set:
+        results.append({
+            "from_id": row[0],
+            "to_id": row[1],
+            "direction": row[2],
+            "travel_time_seconds": row[3] if row[3] is not None else 5,
+            "is_locked": bool(row[4]),
+        })
+    return results
+
+
+async def get_middle_places_in_large(graph, large_id: str) -> list[dict]:
+    """Return all middle_places in a large_place (for region ghost layer)."""
+    r = await graph.query(
+        "MATCH (n:middle_place {parent_large_id: $lid}) RETURN n",
+        {"lid": large_id},
+    )
+    return [row[0].properties for row in r.result_set]
+
+
 async def create_connection(graph, from_id: str, to_id: str, edge_props: dict) -> None:
     await graph.query(
         "MATCH (a:small_place {id: $from_id}), (b:small_place {id: $to_id}) "

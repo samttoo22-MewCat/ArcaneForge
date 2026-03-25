@@ -1,4 +1,6 @@
 """Combat endpoints."""
+import json
+import random
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -6,10 +8,11 @@ from pydantic import BaseModel
 
 from server.broadcast.event_bus import EventBus
 from server.broadcast.event_types import CombatStartedEvent, CombatRoundEvent, CombatEndedEvent
-from server.db.repositories import player_repo, npc_repo, combat_repo
-from server.dependencies import get_graph, get_redis, get_event_bus, get_batch_writer
+from server.db.repositories import player_repo, npc_repo, combat_repo, item_repo
+from server.dependencies import get_graph, get_redis, get_event_bus, get_batch_writer, get_item_master
 from server.engine import rules
 from server.engine.combat import Combatant, tick_to_ready, calculate_damage, apply_damage, check_double_action
+from server.engine.lifecycle import handle_player_death
 from server.engine.state_machine import BattleStateMachine, BattleState
 
 router = APIRouter(prefix="/combat", tags=["combat"])
@@ -33,6 +36,7 @@ async def attack(
     redis=Depends(get_redis),
     bus: EventBus = Depends(get_event_bus),
     writer=Depends(get_batch_writer),
+    item_master: dict = Depends(get_item_master),
 ):
     player = await player_repo.get_player(graph, req.player_id)
     if not player:
@@ -91,9 +95,27 @@ async def attack(
     if new_hp <= 0:
         await combat_repo.end_combat(redis, room_id)
         await player_repo.set_combat_state(graph, req.player_id, False, None)
-        ended_event = CombatEndedEvent(room_id=room_id, winner_id=req.player_id).to_dict()
+
+        loot: list[dict] = []
+        if req.target_type == "npc":
+            # Persist NPC HP = 0, mark dead
+            await npc_repo.update_npc_hp(graph, req.target_id, 0)
+            await npc_repo.update_npc(graph, req.target_id, {"behavior_state": "dead"})
+            loot = await _drop_npc_loot(graph, target, place_id, item_master)
+        else:
+            # Target is a player — trigger death flow
+            await handle_player_death(
+                graph, redis, bus,
+                player_id=req.target_id,
+                player_name=target.get("name", req.target_id),
+                place_id=place_id,
+                killer_id=req.player_id,
+                killer_name=player.get("name", req.player_id),
+            )
+
+        ended_event = CombatEndedEvent(room_id=room_id, winner_id=req.player_id, loot=loot).to_dict()
         await bus.publish_room(place_id, ended_event)
-        return {"success": True, "damage": damage, "target_defeated": True}
+        return {"success": True, "damage": damage, "target_defeated": True, "loot": loot}
 
     return {"success": True, "damage": damage, "target_hp_remaining": new_hp}
 
@@ -118,6 +140,40 @@ async def flee(req: FleeRequest, graph=Depends(get_graph), redis=Depends(get_red
 
 
 # --- helpers ---
+
+async def _drop_npc_loot(graph, npc: dict, room_id: str, item_master: dict) -> list[dict]:
+    """Spawn loot from NPC's loot_table into the room. Returns list of dropped items."""
+    loot_table = npc.get("loot_table", [])
+    if isinstance(loot_table, str):
+        loot_table = json.loads(loot_table)
+
+    dropped: list[dict] = []
+    for entry in loot_table:
+        item_id = entry.get("item_id", "")
+        if item_id not in item_master:
+            continue
+        if random.random() > entry.get("chance", 1.0):
+            continue
+        qty_range = entry.get("quantity", {"min": 1, "max": 1})
+        qty = random.randint(qty_range.get("min", 1), qty_range.get("max", 1))
+        instance_id = f"loot_{uuid.uuid4().hex[:8]}"
+        props = {
+            "instance_id": instance_id,
+            "item_id": item_id,
+            "durability": item_master[item_id].get("durability_max", 100),
+            "quantity": qty,
+            "location_type": "room",
+            "location_id": room_id,
+        }
+        await item_repo.create_item_instance(graph, props)
+        await graph.query(
+            "MATCH (i:item_instance {instance_id: $iid}), (s:small_place {id: $pid}) "
+            "MERGE (i)-[:LOCATED_IN]->(s)",
+            {"iid": instance_id, "pid": room_id},
+        )
+        dropped.append({"item_id": item_id, "quantity": qty, "instance_id": instance_id})
+    return dropped
+
 
 async def _get_place(graph, place_id: str) -> dict:
     from server.db.repositories import place_repo

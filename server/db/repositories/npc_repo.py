@@ -76,3 +76,31 @@ async def update_npc_memory(graph, npc_id: str, memory_summary: str) -> None:
         "MATCH (n:npc {id: $id}) SET n.memory_summary = $mem",
         {"id": npc_id, "mem": memory_summary},
     )
+
+
+async def update_npc(graph, npc_id: str, updates: dict) -> None:
+    if not updates:
+        return
+    safe = _sanitize_props(updates)
+    set_clause = ", ".join(f"n.{k} = ${k}" for k in safe)
+    params = {"id": npc_id, **safe}
+    await graph.query(f"MATCH (n:npc {{id: $id}}) SET {set_clause}", params)
+
+
+async def update_npc_hp(graph, npc_id: str, new_hp: int) -> None:
+    await graph.query(
+        "MATCH (n:npc {id: $id}) SET n.hp = $hp",
+        {"id": npc_id, "hp": new_hp},
+    )
+
+
+async def get_npc_shop(graph, npc_id: str) -> list[dict]:
+    """Return parsed shop_inventory for a merchant NPC."""
+    import json
+    npc = await get_npc(graph, npc_id)
+    if not npc:
+        return []
+    raw = npc.get("shop_inventory", "[]")
+    if isinstance(raw, str):
+        return json.loads(raw)
+    return raw if isinstance(raw, list) else []

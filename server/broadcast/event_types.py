@@ -125,6 +125,25 @@ class WorldStateChangeEvent(BaseEvent):
 
 
 @dataclass
+class PlayerDeathEvent(BaseEvent):
+    event_type: str = "player_death"
+    player_id: str = ""
+    player_name: str = ""
+    place_id: str = ""
+    killer_id: str = ""
+    killer_name: str = ""
+    respawn_in_seconds: int = 60
+
+
+@dataclass
+class PlayerRespawnEvent(BaseEvent):
+    event_type: str = "player_respawn"
+    player_id: str = ""
+    player_name: str = ""
+    respawn_place_id: str = ""
+
+
+@dataclass
 class SystemAnnouncementEvent(BaseEvent):
     event_type: str = "system_announcement"
     message: str = ""

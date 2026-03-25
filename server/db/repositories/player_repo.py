@@ -75,3 +75,22 @@ async def set_combat_state(graph, player_id: str, in_combat: bool, combat_room_i
         "MATCH (p:player {id: $id}) SET p.is_in_combat = $in_combat, p.combat_room_id = $room_id",
         {"id": player_id, "in_combat": in_combat, "room_id": combat_room_id},
     )
+
+
+async def respawn_player(graph, player_id: str, spawn_place_id: str, hp: int, mp: int) -> None:
+    await graph.query(
+        "MATCH (p:player {id: $id}) "
+        "SET p.hp = $hp, p.mp = $mp, p.current_place_id = $place, "
+        "p.is_in_combat = false, p.combat_room_id = null, "
+        "p.is_traveling = false, p.travel_destination_id = null, p.travel_arrives_at = null, "
+        "p.status_effects = []",
+        {"id": player_id, "hp": hp, "mp": mp, "place": spawn_place_id},
+    )
+
+
+async def get_players_in_room(graph, room_id: str) -> list[dict]:
+    r = await graph.query(
+        "MATCH (p:player {current_place_id: $pid}) WHERE NOT p.is_traveling RETURN p",
+        {"pid": room_id},
+    )
+    return [row[0].properties for row in r.result_set]

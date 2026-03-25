@@ -158,7 +158,7 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
     if (!state.player || state.player.is_traveling) return;
     try {
       await api.move(playerId, direction);
-      // SSE will trigger refresh
+      refreshLook(); // immediately show destination room during travel
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       dispatch({

@@ -1,6 +1,7 @@
 """SSE manager: connection registry, streaming response helpers."""
 import asyncio
 import json
+from typing import Callable, Optional
 
 from fastapi import Request
 from fastapi.responses import StreamingResponse
@@ -16,6 +17,7 @@ async def sse_stream(
     player_id: str,
     room_id: str,
     middle_id: str,
+    on_disconnect: Optional[Callable] = None,
 ) -> StreamingResponse:
     queue = await bus.subscribe(player_id, room_id, middle_id)
 
@@ -33,6 +35,8 @@ async def sse_stream(
                     yield ": heartbeat\n\n"
         finally:
             await bus.unsubscribe(queue)
+            if on_disconnect is not None:
+                asyncio.create_task(on_disconnect())
 
     return StreamingResponse(
         generator(),

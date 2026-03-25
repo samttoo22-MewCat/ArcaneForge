@@ -84,6 +84,14 @@ class EventBus:
         for q in dead:
             await self.unsubscribe(q)
 
+    def is_player_connected(self, player_id: str) -> bool:
+        return any(s.player_id == player_id for s in self._sub_index.values())
+
+    @property
+    def active_room_ids(self) -> set[str]:
+        """Room IDs that have at least one active subscriber."""
+        return {s.room_id for s in self._sub_index.values()}
+
     @property
     def connection_count(self) -> int:
         return len(self._sub_index)

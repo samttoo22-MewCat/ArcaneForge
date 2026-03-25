@@ -61,6 +61,10 @@ async def seed():
         )
     print(f"[seed] {len(world['small_places'])} small_place(s) created.")
 
+    # Delete all existing connections (ensures no stale edges survive direction changes)
+    await graph.query("MATCH ()-[e:CONNECTS_TO]->() DELETE e")
+    print("[seed] Cleared existing CONNECTS_TO edges.")
+
     # connections
     for conn in world["connections"]:
         edge_props = {k: v for k, v in conn.items() if k not in ("from", "to")}

@@ -54,6 +54,53 @@ export interface InventoryItem {
   description?: string;
 }
 
+// --- Hierarchical map context types ---
+
+/** A minimal room node for rendering the district floor-plan ghost layer */
+export interface RoomMini {
+  id: string;
+  name: string;
+  x_pos: number;
+  y_pos: number;
+  is_safe_zone?: boolean;
+  parent_middle_id: string;
+}
+
+/** A connection edge between two rooms within the same district */
+export interface MiddleConnection {
+  from_id: string;
+  to_id: string;
+  direction: string;
+  travel_time_seconds: number;
+  is_locked?: boolean;
+}
+
+/** District-level context: all rooms + connections for the floor-plan ghost layer */
+export interface MiddleContext {
+  middle_id: string;
+  middle_name: string;
+  rooms: RoomMini[];
+  connections: MiddleConnection[];
+}
+
+/** A minimal district node for the region ghost thumbnail */
+export interface DistrictMini {
+  id: string;
+  name: string;
+  x_pos: number;
+  y_pos: number;
+  type?: string;
+  parent_large_id: string;
+}
+
+/** Region-level context: all districts for the large-place ghost thumbnail */
+export interface LargeContext {
+  large_id: string;
+  large_name: string;
+  current_middle_id: string;
+  districts: DistrictMini[];
+}
+
 export interface LookResult {
   place: Place;
   exits: Exit[];
@@ -61,6 +108,8 @@ export interface LookResult {
   items: ItemInstance[];
   player_traveling: boolean;
   travel_arrives_at?: number;
+  middle_context?: MiddleContext;
+  large_context?: LargeContext;
 }
 
 export type EventKind =

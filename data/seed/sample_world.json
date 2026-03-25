@@ -6,6 +6,8 @@
       "region_type": "混合",
       "climate": "溫帶，四季分明",
       "danger_level": 3,
+      "x_pos": 100,
+      "y_pos": 100,
       "lore_summary": "一個被森林包圍的古老山谷，中央有一座名為石橋鎮的小城。近年來地下城的怪物活動愈發頻繁。"
     }
   ],
@@ -16,7 +18,19 @@
       "type": "城鎮",
       "atmosphere": "忙碌但友善，有市集和旅店",
       "is_instanced": false,
-      "parent_large_id": "region_vale"
+      "parent_large_id": "region_vale",
+      "x_pos": 100,
+      "y_pos": 170
+    },
+    {
+      "id": "wilds_vale",
+      "name": "翠谷荒野",
+      "type": "荒野",
+      "atmosphere": "茂密的灌木叢與起伏的山丘，野獸出沒",
+      "is_instanced": false,
+      "parent_large_id": "region_vale",
+      "x_pos": 100,
+      "y_pos": 95
     },
     {
       "id": "dungeon_goblin_cave",
@@ -24,7 +38,9 @@
       "type": "地下城",
       "atmosphere": "黑暗、潮濕，充滿哥布林的叫聲",
       "is_instanced": true,
-      "parent_large_id": "region_vale"
+      "parent_large_id": "region_vale",
+      "x_pos": 100,
+      "y_pos": 28
     }
   ],
   "small_places": [
@@ -38,7 +54,9 @@
       "player_ids": [],
       "npc_ids": [],
       "item_instance_ids": [],
-      "parent_middle_id": "town_stonbridge"
+      "parent_middle_id": "town_stonbridge",
+      "x_pos": 100,
+      "y_pos": 85
     },
     {
       "id": "room_inn_main",
@@ -50,7 +68,23 @@
       "player_ids": [],
       "npc_ids": [],
       "item_instance_ids": [],
-      "parent_middle_id": "town_stonbridge"
+      "parent_middle_id": "town_stonbridge",
+      "x_pos": 30,
+      "y_pos": 85
+    },
+    {
+      "id": "room_inn_cellar",
+      "name": "旅店地窖",
+      "description_base": "陰暗的地窖，空氣中彌漫著霉味。幾個木桶靠牆排列，角落有老鼠的痕跡。最近似乎有野獸從某處鑽了進來。",
+      "light": "昏暗",
+      "weather": "室內",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "town_stonbridge",
+      "x_pos": 30,
+      "y_pos": 150
     },
     {
       "id": "room_town_gate",
@@ -62,7 +96,37 @@
       "player_ids": [],
       "npc_ids": [],
       "item_instance_ids": [],
-      "parent_middle_id": "town_stonbridge"
+      "parent_middle_id": "town_stonbridge",
+      "x_pos": 100,
+      "y_pos": 15
+    },
+    {
+      "id": "room_forge",
+      "name": "鐵砧鍛造鋪",
+      "description_base": "鐵匠鋪裡爐火通紅，鐵錘聲響個不停。牆上掛著各式武器和工具，地上散落著鐵屑和煤炭。鐵匠正在打磨一把長劍。",
+      "light": "明亮",
+      "weather": "室內",
+      "is_safe_zone": true,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "town_stonbridge",
+      "x_pos": 170,
+      "y_pos": 85
+    },
+    {
+      "id": "room_market_south",
+      "name": "南市集廣場",
+      "description_base": "熱鬧的南市集，各種攤販喧囂叫賣。香料、布料、食物堆成小山。小偷和商人在人群中穿梭，得小心自己的錢袋。",
+      "light": "明亮",
+      "weather": "晴天",
+      "is_safe_zone": true,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "town_stonbridge",
+      "x_pos": 100,
+      "y_pos": 155
     },
     {
       "id": "room_wilds_path",
@@ -74,7 +138,51 @@
       "player_ids": [],
       "npc_ids": [],
       "item_instance_ids": [],
-      "parent_middle_id": "region_vale"
+      "parent_middle_id": "wilds_vale",
+      "x_pos": 100,
+      "y_pos": 100
+    },
+    {
+      "id": "room_wilds_clearing",
+      "name": "荒野空地",
+      "description_base": "小徑旁的一片開闊地，草地被踩踏得凌亂。地上有幾根啃過的骨頭和動物皮毛。這裡明顯是野獸的活動區域。",
+      "light": "明亮",
+      "weather": "晴天",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "wilds_vale",
+      "x_pos": 170,
+      "y_pos": 100
+    },
+    {
+      "id": "room_wilds_farmhouse",
+      "name": "廢棄農舍",
+      "description_base": "一棟搖搖欲墜的廢棄農舍，窗戶早已破碎，屋頂部分塌陷。屋內散落著舊農具和發霉的草料。角落似乎有人住過的痕跡。",
+      "light": "昏暗",
+      "weather": "室內",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "wilds_vale",
+      "x_pos": 30,
+      "y_pos": 100
+    },
+    {
+      "id": "room_wilds_hill",
+      "name": "山丘頂",
+      "description_base": "一座俯瞰翠谷的小山丘頂部，風吹草動，視野開闊。往南能隱約看見石橋鎮的輪廓，往北是更深的荒野。狼群偶爾在此聚集。",
+      "light": "明亮",
+      "weather": "晴天",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "wilds_vale",
+      "x_pos": 170,
+      "y_pos": 35
     },
     {
       "id": "room_cave_entrance",
@@ -86,7 +194,9 @@
       "player_ids": [],
       "npc_ids": [],
       "item_instance_ids": [],
-      "parent_middle_id": "dungeon_goblin_cave"
+      "parent_middle_id": "dungeon_goblin_cave",
+      "x_pos": 100,
+      "y_pos": 165
     },
     {
       "id": "room_cave_main_hall",
@@ -98,25 +208,85 @@
       "player_ids": [],
       "npc_ids": [],
       "item_instance_ids": [],
-      "parent_middle_id": "dungeon_goblin_cave"
+      "parent_middle_id": "dungeon_goblin_cave",
+      "x_pos": 100,
+      "y_pos": 95
+    },
+    {
+      "id": "room_cave_side",
+      "name": "洞穴側室",
+      "description_base": "主廳西側的一個狹小側室，用來堆放劫掠來的雜物。腐爛的食物氣味刺鼻，角落蜷縮著幾個哥布林巫師，口中喃喃念著什麼。",
+      "light": "黑暗",
+      "weather": "室內",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "dungeon_goblin_cave",
+      "x_pos": 30,
+      "y_pos": 95
+    },
+    {
+      "id": "room_cave_armory",
+      "name": "哥布林武器庫",
+      "description_base": "主廳東側的武器儲藏室，生鏽的武器與破舊的盾牌堆滿了每個角落。有幾名哥布林戰士正在磨刀，警惕地抬起頭看向入口。",
+      "light": "昏暗",
+      "weather": "室內",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "dungeon_goblin_cave",
+      "x_pos": 170,
+      "y_pos": 95
+    },
+    {
+      "id": "room_cave_depths",
+      "name": "哥布林首領巢穴",
+      "description_base": "更深的洞穴，散發著腐爛的惡臭。牆上掛著各種奇形怪狀的戰利品，中央有一把破舊的寶座。這裡是首領的領地。",
+      "light": "黑暗",
+      "weather": "室內",
+      "is_safe_zone": false,
+      "player_ids": [],
+      "npc_ids": [],
+      "item_instance_ids": [],
+      "parent_middle_id": "dungeon_goblin_cave",
+      "x_pos": 100,
+      "y_pos": 30
     }
   ],
   "connections": [
     {
       "from": "room_town_square", "to": "room_inn_main",
-      "direction": "in",
+      "direction": "west",
       "is_locked": false, "is_hidden": false,
       "travel_time_seconds": 3,
-      "exit_description": "北邊是紅月旅店的木製大門，門縫透出溫暖的橘色燈光與食物香氣。",
+      "exit_description": "廣場西側是紅月旅店的木製大門，門縫透出溫暖的橘色燈光與食物香氣。",
       "transition_description": "你推開旅店厚重的木門，一股溫熱的空氣迎面撲來。"
     },
     {
       "from": "room_inn_main", "to": "room_town_square",
-      "direction": "out",
+      "direction": "east",
       "is_locked": false, "is_hidden": false,
       "travel_time_seconds": 3,
-      "exit_description": "南邊的大門通往石橋鎮廣場，能隱約聽見外頭的喧嚷聲。",
+      "exit_description": "東邊的大門通往石橋鎮廣場，能隱約聽見外頭的喧嚷聲。",
       "transition_description": "你走出旅店，冷空氣讓你不禁縮了縮脖子。"
+    },
+    {
+      "from": "room_inn_main", "to": "room_inn_cellar",
+      "direction": "down",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 5,
+      "exit_description": "吧台旁有一扇通往地窖的木門，隱約傳出奇怪的聲響。",
+      "transition_description": "你走下嘎吱作響的木梯，踏入陰暗的地窖。"
+    },
+    {
+      "from": "room_inn_cellar", "to": "room_inn_main",
+      "direction": "up",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 5,
+      "exit_description": "頭頂的木梯通往旅店大廳，能聽見上方的談話聲。",
+      "transition_description": "你爬上木梯，回到溫暖的旅店大廳。"
     },
     {
       "from": "room_town_square", "to": "room_town_gate",
@@ -135,6 +305,38 @@
       "transition_description": "你沿著主街向南走回廣場。"
     },
     {
+      "from": "room_town_square", "to": "room_forge",
+      "direction": "east",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 5,
+      "exit_description": "廣場東邊傳來鐵錘敲擊的聲音，煙囪冒著黑煙——那是鐵匠鋪。",
+      "transition_description": "你走向廣場東側，熱浪與鐵鏽的氣味迎面撲來。"
+    },
+    {
+      "from": "room_forge", "to": "room_town_square",
+      "direction": "west",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 5,
+      "exit_description": "鍛造鋪的西側出口通往廣場，廣場上水井的輪廓清晰可見。",
+      "transition_description": "你離開鍛造鋪，走入廣場清新的空氣中。"
+    },
+    {
+      "from": "room_town_square", "to": "room_market_south",
+      "direction": "south",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 6,
+      "exit_description": "廣場南端是嘈雜的市集方向，人聲鼎沸，商販的叫賣聲此起彼落。",
+      "transition_description": "你向南走入喧囂的南市集，人群將你夾在其中。"
+    },
+    {
+      "from": "room_market_south", "to": "room_town_square",
+      "direction": "north",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 6,
+      "exit_description": "市集北邊是一條寬敞的石板路，通往廣場中心的水井。",
+      "transition_description": "你擠出市集的人群，走向北邊清靜一些的廣場。"
+    },
+    {
       "from": "room_town_gate", "to": "room_wilds_path",
       "direction": "north",
       "is_locked": false, "is_hidden": false,
@@ -149,6 +351,54 @@
       "travel_time_seconds": 15,
       "exit_description": "南邊不遠處是石橋鎮的城牆，城門開著，衛兵的身影依稀可辨。",
       "transition_description": "你快步向南，走回石橋鎮的城牆保護範圍內。"
+    },
+    {
+      "from": "room_wilds_path", "to": "room_wilds_clearing",
+      "direction": "east",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 10,
+      "exit_description": "東邊的草叢中有一條踩踏出來的小徑，通向一片開闊地。",
+      "transition_description": "你撥開茂密的草叢，走入那片開闊地。"
+    },
+    {
+      "from": "room_wilds_clearing", "to": "room_wilds_path",
+      "direction": "west",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 10,
+      "exit_description": "西邊的草叢中能看到主要小徑的方向。",
+      "transition_description": "你穿過草叢，回到主要小徑。"
+    },
+    {
+      "from": "room_wilds_path", "to": "room_wilds_farmhouse",
+      "direction": "west",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 12,
+      "exit_description": "小徑西邊有條幾乎被雜草淹沒的舊路，隱約能看到一棟破舊的建築物輪廓。",
+      "transition_description": "你沿著廢棄的小路往西走，推開農舍搖搖欲墜的木門。"
+    },
+    {
+      "from": "room_wilds_farmhouse", "to": "room_wilds_path",
+      "direction": "east",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 12,
+      "exit_description": "農舍東邊有一條通往荒野主徑的廢棄小路。",
+      "transition_description": "你從農舍走出，踏上通往主徑的舊路。"
+    },
+    {
+      "from": "room_wilds_clearing", "to": "room_wilds_hill",
+      "direction": "north",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 18,
+      "exit_description": "開闊地北端有一條蜿蜒的山路，通往那座俯瞰翠谷的山丘頂。",
+      "transition_description": "你沿著陡峭的山路攀爬，氣喘吁吁地抵達山丘頂端。"
+    },
+    {
+      "from": "room_wilds_hill", "to": "room_wilds_clearing",
+      "direction": "south",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 15,
+      "exit_description": "山丘南坡向下是那片開闊地，遠處灌木叢依稀可辨。",
+      "transition_description": "你小心翼翼地沿山坡下行，回到開闊地。"
     },
     {
       "from": "room_wilds_path", "to": "room_cave_entrance",
@@ -181,27 +431,100 @@
       "travel_time_seconds": 8,
       "exit_description": "東側有一扇厚重的鐵門虛掩著，門外透入一絲清涼的空氣。",
       "transition_description": "你向鐵門方向衝去，用肩膀撞開它，跌跌撞撞地退回洞穴入口。"
+    },
+    {
+      "from": "room_cave_main_hall", "to": "room_cave_depths",
+      "direction": "north",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 12,
+      "exit_description": "主廳北側有一條更窄更黑的通道，深處不時傳來沉重的腳步聲。",
+      "transition_description": "你彎腰鑽入狹窄的通道，手摸著濕滑的石壁向深處走去。空氣越來越沉重。"
+    },
+    {
+      "from": "room_cave_depths", "to": "room_cave_main_hall",
+      "direction": "south",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 12,
+      "exit_description": "南邊的通道通往主廳，那裡相對明亮一些。",
+      "transition_description": "你急忙退出首領的巢穴，跌跌撞撞地跑回主廳。"
+    },
+    {
+      "from": "room_cave_main_hall", "to": "room_cave_side",
+      "direction": "west",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 6,
+      "exit_description": "主廳西牆有道低矮的拱形開口，傳來刺鼻的氣味和低沉的吟唱聲。",
+      "transition_description": "你彎腰鑽過拱形開口，走入這間充滿異味的側室。"
+    },
+    {
+      "from": "room_cave_side", "to": "room_cave_main_hall",
+      "direction": "east",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 6,
+      "exit_description": "東邊的拱形開口通往主廳，那裡有更多的光亮。",
+      "transition_description": "你從側室鑽回主廳，深吸一口氣。"
+    },
+    {
+      "from": "room_cave_main_hall", "to": "room_cave_armory",
+      "direction": "east",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 6,
+      "exit_description": "主廳東側有扇厚重的木門，門上刻著粗糙的哥布林符文。磨刀的聲音從門後傳來。",
+      "transition_description": "你推開沉重的木門，走入光線昏暗的武器庫。"
+    },
+    {
+      "from": "room_cave_armory", "to": "room_cave_main_hall",
+      "direction": "west",
+      "is_locked": false, "is_hidden": false,
+      "travel_time_seconds": 6,
+      "exit_description": "武器庫的西門通往主廳，門縫透出主廳油桶燃燒的橘光。",
+      "transition_description": "你穿過武器庫的西門，回到主廳。"
     }
   ],
   "initial_npcs": [
-    {"template": "innkeeper", "place_id": "room_inn_main", "id": "npc_innkeeper_01"},
-    {"template": "town_guard", "place_id": "room_town_gate", "id": "npc_guard_01"},
-    {"template": "town_guard", "place_id": "room_town_gate", "id": "npc_guard_02"},
-    {"template": "goblin_scout", "place_id": "room_cave_entrance", "id": "npc_goblin_scout_01"},
-    {"template": "goblin_warrior", "place_id": "room_cave_main_hall", "id": "npc_goblin_warrior_01"}
+    {"template": "innkeeper",       "place_id": "room_inn_main",       "id": "npc_innkeeper_01"},
+    {"template": "town_guard",      "place_id": "room_town_gate",      "id": "npc_guard_01"},
+    {"template": "town_guard",      "place_id": "room_town_gate",      "id": "npc_guard_02"},
+    {"template": "blacksmith",      "place_id": "room_forge",          "id": "npc_blacksmith_01"},
+    {"template": "market_trader",   "place_id": "room_market_south",   "id": "npc_trader_01"},
+    {"template": "wolf",            "place_id": "room_inn_cellar",     "id": "npc_wolf_cellar_01"},
+    {"template": "wolf",            "place_id": "room_wilds_clearing", "id": "npc_wolf_wilds_01"},
+    {"template": "wolf",            "place_id": "room_wilds_clearing", "id": "npc_wolf_wilds_02"},
+    {"template": "wolf",            "place_id": "room_wilds_hill",     "id": "npc_wolf_hill_01"},
+    {"template": "wolf",            "place_id": "room_wilds_hill",     "id": "npc_wolf_hill_02"},
+    {"template": "goblin_scout",    "place_id": "room_cave_entrance",  "id": "npc_goblin_scout_01"},
+    {"template": "goblin_scout",    "place_id": "room_cave_entrance",  "id": "npc_goblin_scout_02"},
+    {"template": "goblin_warrior",  "place_id": "room_cave_main_hall", "id": "npc_goblin_warrior_01"},
+    {"template": "goblin_warrior",  "place_id": "room_cave_main_hall", "id": "npc_goblin_warrior_02"},
+    {"template": "goblin_shaman",   "place_id": "room_cave_side",      "id": "npc_goblin_shaman_01"},
+    {"template": "goblin_shaman",   "place_id": "room_cave_side",      "id": "npc_goblin_shaman_02"},
+    {"template": "goblin_warrior",  "place_id": "room_cave_armory",    "id": "npc_goblin_armory_01"},
+    {"template": "goblin_warrior",  "place_id": "room_cave_armory",    "id": "npc_goblin_armory_02"},
+    {"template": "goblin_warrior",  "place_id": "room_cave_depths",    "id": "npc_goblin_boss_01"}
   ],
   "initial_items": [
-    {"item_id": "barrel_oil",           "instance_id": "item_barrel_cave_01",  "place_id": "room_cave_main_hall", "durability": 30,  "quantity": 1},
-    {"item_id": "torch",                "instance_id": "item_torch_01",         "place_id": "room_cave_entrance",  "durability": 15,  "quantity": 1},
-    {"item_id": "torch",                "instance_id": "item_torch_02",         "place_id": "room_wilds_path",     "durability": 20,  "quantity": 1},
-    {"item_id": "key_dungeon_01",       "instance_id": "item_key_01",           "place_id": "room_cave_entrance",  "durability": 999, "quantity": 1},
-    {"item_id": "potion_health_small",  "instance_id": "item_potion_01",        "place_id": "room_town_square",    "durability": 1,   "quantity": 1},
-    {"item_id": "potion_health_small",  "instance_id": "item_potion_02",        "place_id": "room_inn_main",       "durability": 1,   "quantity": 3},
-    {"item_id": "potion_health_medium", "instance_id": "item_potion_med_01",    "place_id": "room_town_square",    "durability": 1,   "quantity": 1},
-    {"item_id": "dagger_steel",         "instance_id": "item_dagger_01",        "place_id": "room_town_square",    "durability": 80,  "quantity": 1},
-    {"item_id": "sword_iron",           "instance_id": "item_sword_01",         "place_id": "room_cave_entrance",  "durability": 60,  "quantity": 1},
-    {"item_id": "armor_leather",        "instance_id": "item_armor_01",         "place_id": "room_cave_main_hall", "durability": 50,  "quantity": 1},
-    {"item_id": "herb_red",             "instance_id": "item_herb_01",          "place_id": "room_wilds_path",     "durability": 10,  "quantity": 5},
-    {"item_id": "coin_copper",          "instance_id": "item_coin_01",          "place_id": "room_town_square",    "durability": 999, "quantity": 10}
+    {"item_id": "barrel_oil",           "instance_id": "item_barrel_cave_01",   "place_id": "room_cave_main_hall",  "durability": 30,  "quantity": 1},
+    {"item_id": "barrel_oil",           "instance_id": "item_barrel_cave_02",   "place_id": "room_cave_main_hall",  "durability": 30,  "quantity": 1},
+    {"item_id": "torch",                "instance_id": "item_torch_01",          "place_id": "room_cave_entrance",   "durability": 15,  "quantity": 1},
+    {"item_id": "torch",                "instance_id": "item_torch_02",          "place_id": "room_wilds_path",      "durability": 20,  "quantity": 1},
+    {"item_id": "key_dungeon_01",       "instance_id": "item_key_01",            "place_id": "room_cave_entrance",   "durability": 999, "quantity": 1},
+    {"item_id": "potion_health_small",  "instance_id": "item_potion_01",         "place_id": "room_town_square",     "durability": 1,   "quantity": 1},
+    {"item_id": "potion_health_small",  "instance_id": "item_potion_02",         "place_id": "room_inn_main",        "durability": 1,   "quantity": 3},
+    {"item_id": "potion_health_medium", "instance_id": "item_potion_med_01",     "place_id": "room_cave_depths",     "durability": 1,   "quantity": 1},
+    {"item_id": "dagger_steel",         "instance_id": "item_dagger_01",         "place_id": "room_town_square",     "durability": 80,  "quantity": 1},
+    {"item_id": "sword_iron",           "instance_id": "item_sword_01",          "place_id": "room_cave_entrance",   "durability": 60,  "quantity": 1},
+    {"item_id": "sword_iron",           "instance_id": "item_sword_armory_01",   "place_id": "room_cave_armory",     "durability": 45,  "quantity": 1},
+    {"item_id": "armor_leather",        "instance_id": "item_armor_01",          "place_id": "room_cave_main_hall",  "durability": 50,  "quantity": 1},
+    {"item_id": "herb_red",             "instance_id": "item_herb_01",           "place_id": "room_wilds_path",      "durability": 10,  "quantity": 3},
+    {"item_id": "herb_red",             "instance_id": "item_herb_02",           "place_id": "room_wilds_clearing",  "durability": 10,  "quantity": 4},
+    {"item_id": "herb_red",             "instance_id": "item_herb_03",           "place_id": "room_wilds_hill",      "durability": 10,  "quantity": 2},
+    {"item_id": "vial_glass",           "instance_id": "item_vial_01",           "place_id": "room_inn_main",        "durability": 5,   "quantity": 3},
+    {"item_id": "wood_stick",           "instance_id": "item_stick_01",          "place_id": "room_wilds_path",      "durability": 20,  "quantity": 2},
+    {"item_id": "wood_stick",           "instance_id": "item_stick_02",          "place_id": "room_wilds_farmhouse", "durability": 20,  "quantity": 3},
+    {"item_id": "cloth_rag",            "instance_id": "item_rag_01",            "place_id": "room_inn_cellar",      "durability": 5,   "quantity": 3},
+    {"item_id": "cloth_rag",            "instance_id": "item_rag_02",            "place_id": "room_wilds_farmhouse", "durability": 5,   "quantity": 2},
+    {"item_id": "coin_copper",          "instance_id": "item_coin_01",           "place_id": "room_town_square",     "durability": 999, "quantity": 20},
+    {"item_id": "coin_copper",          "instance_id": "item_coin_02",           "place_id": "room_cave_depths",     "durability": 999, "quantity": 50},
+    {"item_id": "coin_copper",          "instance_id": "item_coin_03",           "place_id": "room_cave_armory",     "durability": 999, "quantity": 15}
   ]
 }

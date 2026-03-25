@@ -14,11 +14,11 @@ from server.broadcast.event_types import (
 )
 from server.db import optimistic_lock
 from server.db.batch_writer import BatchWriter, WriteOperation
-from server.db.repositories import item_repo, place_repo, player_repo
+from server.db.repositories import item_repo, npc_repo, place_repo, player_repo
 from server.dependencies import get_batch_writer, get_event_bus, get_graph, get_item_master, get_redis
 from server.dm import nonce_store, prompt_builder, signer
 from server.dm.validator import RulingContext, validate_ruling
-from server.engine import rules
+from server.engine import npc_ai, rules
 
 router = APIRouter(prefix="/player", tags=["player"])
 
@@ -115,6 +115,11 @@ async def move_player(
     # 1. Remove player from current room (they've departed)
     await optimistic_lock.remove_player_from_room(graph, old_place_id, req.player_id)
 
+    # Hibernate NPCs if no more players remain in the room
+    remaining = await player_repo.get_players_in_room(graph, old_place_id)
+    if not remaining:
+        await npc_repo.hibernate_npcs_in_place(graph, old_place_id)
+
     # 2. Mark player as traveling (position stays as old room until arrival)
     await player_repo.set_travel_state(graph, req.player_id, True, new_place_id, arrives_at)
 
@@ -190,6 +195,15 @@ async def _arrive(
         "travel_arrives_at": None,
     }))
 
+    # Wake hibernating NPCs in the new room and run delayed simulation
+    hibernated = await npc_repo.wake_npcs_in_place(graph, new_place_id)
+    for npc in hibernated:
+        if npc.get("frozen_at"):
+            elapsed = time.time() - npc["frozen_at"]
+            updates = npc_ai.simulate_npc_elapsed_time(npc, elapsed)
+            if updates:
+                await npc_repo.update_npc(graph, npc["id"], updates)
+
     # Update SSE subscription routing so the player receives events for the new room
     new_place = await place_repo.get_small_place(graph, new_place_id)
     new_middle_id = (new_place or {}).get("parent_middle_id", "global")
@@ -226,6 +240,55 @@ async def look(
     npcs = await _get_npcs(graph, place_id)
     items = await item_repo.get_items_in_place(graph, place_id)
 
+    # --- Hierarchical map context ---
+    middle_id = place.get("parent_middle_id")
+    middle_context = None
+    large_context = None
+    if middle_id:
+        middle_rooms, middle_conns, middle_place = await asyncio.gather(
+            place_repo.get_small_places_in_middle(graph, middle_id),
+            place_repo.get_connections_in_middle(graph, middle_id),
+            place_repo.get_middle_place(graph, middle_id),
+        )
+        middle_context = {
+            "middle_id": middle_id,
+            "middle_name": (middle_place or {}).get("name", middle_id),
+            "rooms": [
+                {
+                    "id": r["id"],
+                    "name": r.get("name", r["id"]),
+                    "x_pos": r.get("x_pos", 0),
+                    "y_pos": r.get("y_pos", 0),
+                    "is_safe_zone": r.get("is_safe_zone", False),
+                    "parent_middle_id": r.get("parent_middle_id", middle_id),
+                }
+                for r in middle_rooms
+            ],
+            "connections": middle_conns,
+        }
+        large_id = (middle_place or {}).get("parent_large_id") if middle_place else None
+        if large_id:
+            large_districts, large_place = await asyncio.gather(
+                place_repo.get_middle_places_in_large(graph, large_id),
+                place_repo.get_large_place(graph, large_id),
+            )
+            large_context = {
+                "large_id": large_id,
+                "large_name": (large_place or {}).get("name", large_id),
+                "current_middle_id": middle_id,
+                "districts": [
+                    {
+                        "id": d["id"],
+                        "name": d.get("name", d["id"]),
+                        "x_pos": d.get("x_pos", 0),
+                        "y_pos": d.get("y_pos", 0),
+                        "type": d.get("type", ""),
+                        "parent_large_id": d.get("parent_large_id", large_id),
+                    }
+                    for d in large_districts
+                ],
+            }
+
     return {
         "place": place,
         "exits": exits,
@@ -241,11 +304,12 @@ async def look(
         ],
         "player_traveling": player.get("is_traveling", False),
         "travel_arrives_at": player.get("travel_arrives_at"),
+        "middle_context": middle_context,
+        "large_context": large_context,
     }
 
 
 async def _get_npcs(graph, place_id: str) -> list[dict]:
-    from server.db.repositories import npc_repo
     return await npc_repo.get_npcs_in_place(graph, place_id)
 
 
@@ -284,7 +348,6 @@ async def do_action(
     rules.can_use_free_action(player)
 
     place = await place_repo.get_small_place(graph, player["current_place_id"])
-    from server.db.repositories import npc_repo
     npcs = await npc_repo.get_npcs_in_place(graph, player["current_place_id"])
     scene_items = await item_repo.get_items_in_place(graph, player["current_place_id"])
     inventory = await item_repo.get_player_inventory(graph, req.player_id)
@@ -373,6 +436,194 @@ async def get_inventory(
             "weight": master.get("weight", 0),
         })
     return {"items": result}
+
+
+class CraftRequest(BaseModel):
+    player_id: str
+    item_id: str  # must have is_craftable: true in item master
+
+
+@router.post("/craft")
+async def craft(
+    req: CraftRequest,
+    graph=Depends(get_graph),
+    bus: EventBus = Depends(get_event_bus),
+    item_master: dict = Depends(get_item_master),
+):
+    master = item_master.get(req.item_id)
+    if not master or not master.get("is_craftable"):
+        raise HTTPException(400, "此物品無法製作。")
+
+    recipe: dict = master.get("craft_recipe") or {}
+    if not recipe:
+        raise HTTPException(400, "此物品沒有製作配方。")
+
+    player = await player_repo.get_player(graph, req.player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+
+    # Verify all ingredients
+    for ingredient_id, amount in recipe.items():
+        instances = await item_repo.get_player_inventory_by_item_id(graph, req.player_id, ingredient_id)
+        total = sum(i.get("quantity", 1) for i in instances)
+        if total < amount:
+            name = item_master.get(ingredient_id, {}).get("name", ingredient_id)
+            raise HTTPException(400, f"材料不足：需要 {name} ×{amount}，但只有 ×{total}。")
+
+    # Consume ingredients
+    for ingredient_id, amount in recipe.items():
+        await item_repo.consume_items_from_inventory(graph, req.player_id, ingredient_id, amount)
+
+    # Create crafted item
+    instance_id = f"craft_{uuid.uuid4().hex[:8]}"
+    props = {
+        "instance_id": instance_id,
+        "item_id": req.item_id,
+        "durability": master.get("durability_max", 100),
+        "quantity": 1,
+        "location_type": "player_inventory",
+        "location_id": req.player_id,
+    }
+    await item_repo.create_item_instance(graph, props)
+    await graph.query(
+        "MATCH (i:item_instance {instance_id: $iid}), (p:player {id: $pid}) "
+        "MERGE (i)-[:OWNED_BY]->(p)",
+        {"iid": instance_id, "pid": req.player_id},
+    )
+
+    event = WorldStateChangeEvent(
+        place_id=player["current_place_id"],
+        change_type="item_crafted",
+        details={"player_id": req.player_id, "item_id": req.item_id, "instance_id": instance_id},
+    ).to_dict()
+    await bus.publish_room(player["current_place_id"], event)
+    return {"success": True, "crafted": req.item_id, "instance_id": instance_id}
+
+
+class BuyRequest(BaseModel):
+    player_id: str
+    npc_id: str
+    item_id: str
+    quantity: int = 1
+
+
+class SellRequest(BaseModel):
+    player_id: str
+    npc_id: str
+    item_instance_id: str
+
+
+@router.post("/buy")
+async def buy_item(
+    req: BuyRequest,
+    graph=Depends(get_graph),
+    item_master: dict = Depends(get_item_master),
+):
+    import json as _json
+
+    player = await player_repo.get_player(graph, req.player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+
+    npc = await npc_repo.get_npc(graph, req.npc_id)
+    if not npc or npc.get("npc_type") != "merchant":
+        raise HTTPException(400, "目標不是商人或不存在。")
+    if npc.get("current_place_id") != player["current_place_id"]:
+        raise HTTPException(400, "商人不在同一個地點。")
+
+    shop_inv = npc.get("shop_inventory", [])
+    if isinstance(shop_inv, str):
+        shop_inv = _json.loads(shop_inv)
+
+    shop_item = next((s for s in shop_inv if s["item_id"] == req.item_id), None)
+    if not shop_item:
+        raise HTTPException(400, "商人沒有此物品。")
+    if shop_item.get("stock", 0) < req.quantity:
+        raise HTTPException(400, f"庫存不足，只剩 {shop_item.get('stock', 0)} 個。")
+
+    total_price = shop_item["price"] * req.quantity
+    coin_instances = await item_repo.get_player_inventory_by_item_id(graph, req.player_id, "coin_copper")
+    total_coins = sum(i.get("quantity", 1) for i in coin_instances)
+    if total_coins < total_price:
+        raise HTTPException(400, f"銅幣不足。需要 {total_price} 個，你只有 {total_coins} 個。")
+
+    await item_repo.consume_items_from_inventory(graph, req.player_id, "coin_copper", total_price)
+
+    instance_id = f"buy_{uuid.uuid4().hex[:8]}"
+    master = item_master.get(req.item_id, {})
+    props = {
+        "instance_id": instance_id,
+        "item_id": req.item_id,
+        "durability": master.get("durability_max", 100),
+        "quantity": req.quantity,
+        "location_type": "player_inventory",
+        "location_id": req.player_id,
+    }
+    await item_repo.create_item_instance(graph, props)
+    await graph.query(
+        "MATCH (i:item_instance {instance_id: $iid}), (p:player {id: $pid}) "
+        "MERGE (i)-[:OWNED_BY]->(p)",
+        {"iid": instance_id, "pid": req.player_id},
+    )
+
+    for s in shop_inv:
+        if s["item_id"] == req.item_id:
+            s["stock"] -= req.quantity
+            break
+    await npc_repo.update_npc(graph, req.npc_id, {"shop_inventory": _json.dumps(shop_inv, ensure_ascii=False)})
+
+    return {"success": True, "item_id": req.item_id, "quantity": req.quantity, "cost": total_price}
+
+
+@router.post("/sell")
+async def sell_item(
+    req: SellRequest,
+    graph=Depends(get_graph),
+    item_master: dict = Depends(get_item_master),
+):
+    player = await player_repo.get_player(graph, req.player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+
+    npc = await npc_repo.get_npc(graph, req.npc_id)
+    if not npc or npc.get("npc_type") != "merchant":
+        raise HTTPException(400, "目標不是商人或不存在。")
+    if npc.get("current_place_id") != player["current_place_id"]:
+        raise HTTPException(400, "商人不在同一個地點。")
+
+    inst = await item_repo.get_item_instance(graph, req.item_instance_id)
+    if not inst or inst.get("location_id") != req.player_id:
+        raise HTTPException(400, "你沒有這個物品，或物品不在背包中。")
+    if inst.get("item_id") == "coin_copper":
+        raise HTTPException(400, "無法直接出售銅幣。")
+
+    master = item_master.get(inst.get("item_id", ""), {})
+    qty = inst.get("quantity", 1)
+    atk = master.get("base_atk", 0)
+    def_ = master.get("base_def", 0)
+    sell_price = max(1, (atk + def_ + 1) * qty)
+
+    await graph.query(
+        "MATCH (i:item_instance {instance_id: $iid}) DETACH DELETE i",
+        {"iid": req.item_instance_id},
+    )
+
+    coin_id = f"coin_{uuid.uuid4().hex[:8]}"
+    await item_repo.create_item_instance(graph, {
+        "instance_id": coin_id,
+        "item_id": "coin_copper",
+        "durability": 999,
+        "quantity": sell_price,
+        "location_type": "player_inventory",
+        "location_id": req.player_id,
+    })
+    await graph.query(
+        "MATCH (i:item_instance {instance_id: $iid}), (p:player {id: $pid}) "
+        "MERGE (i)-[:OWNED_BY]->(p)",
+        {"iid": coin_id, "pid": req.player_id},
+    )
+
+    return {"success": True, "sold_instance_id": req.item_instance_id, "received_coins": sell_price}
 
 
 # ── Must be LAST — wildcard catches any GET /player/{id} not matched above ──

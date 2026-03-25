@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     grab_contest_window_seconds: int = 10
     nonce_ttl_seconds: int = 300
 
+    # Gameplay
+    respawn_place_id: str = "room_town_square"
+    respawn_delay_seconds: int = 60
+    npc_tick_interval_seconds: float = 2.0
+    disconnect_grace_seconds: int = 30
+
     # Server
     server_host: str = "0.0.0.0"
     server_port: int = 3031

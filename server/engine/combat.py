@@ -1,10 +1,35 @@
 """Combat engine: action bar, turn order, damage formula."""
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from server.engine.dice import perturbation, damage_random
 from server.config import settings
 
 DOUBLE_ACTION_THRESHOLD = 0.30  # 30% SPD difference triggers double action
+
+_MATRIX_PATH = Path(__file__).parent.parent.parent / "data" / "element_matrix.json"
+_element_matrix: dict = {}
+
+
+def _load_element_matrix() -> dict:
+    global _element_matrix
+    if not _element_matrix and _MATRIX_PATH.exists():
+        data = json.loads(_MATRIX_PATH.read_text(encoding="utf-8"))
+        _element_matrix = {k: v for k, v in data.items() if not k.startswith("_")}
+    return _element_matrix
+
+
+def get_element_multiplier(attacker_tags: list[str], target_tags: list[str]) -> float:
+    """Multiplicative element bonus based on item/NPC tags vs target tags."""
+    matrix = _load_element_matrix()
+    mult = 1.0
+    for atk_elem, defenders in matrix.items():
+        if atk_elem in attacker_tags:
+            for def_elem, factor in defenders.items():
+                if def_elem in target_tags:
+                    mult *= factor
+    return mult
 
 
 @dataclass
@@ -50,10 +75,13 @@ def calculate_damage(
     def_: int,
     dm_modifier: float,
     is_combat: bool = True,
+    attacker_tags: list[str] | None = None,
+    target_tags: list[str] | None = None,
 ) -> int:
     cap = settings.dm_combat_modifier_cap if is_combat else settings.dm_modifier_cap
     modifier = min(float(dm_modifier), cap)
-    raw = (atk - def_ * 0.5) * modifier * damage_random()
+    elem_mult = get_element_multiplier(attacker_tags or [], target_tags or [])
+    raw = (atk - def_ * 0.5) * modifier * elem_mult * damage_random()
     return max(1, int(raw))
 
 
