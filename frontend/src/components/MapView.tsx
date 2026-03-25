@@ -1,23 +1,28 @@
 import type { Exit, LookResult } from "../types";
 
 const DIR_OFFSET: Record<string, [number, number]> = {
-  north: [0, -110],
-  south: [0, 110],
-  east: [120, 0],
-  west: [-120, 0],
-  up: [90, -80],
-  down: [90, 80],
-  in: [-90, -80],
-  out: [-90, 80],
+  north: [0, -115],
+  south: [0, 115],
+  east: [128, 0],
+  west: [-128, 0],
+  up: [96, -86],
+  down: [96, 86],
+  in: [-96, -86],
+  out: [-96, 86],
 };
 
 const DIR_ICON: Record<string, string> = {
-  north: "N", south: "S", east: "E", west: "W",
-  up: "↑", down: "↓", in: "⇥", out: "⇤",
+  north: "北", south: "南", east: "東", west: "西",
+  up: "上", down: "下", in: "入", out: "出",
+};
+
+const DIR_ZH: Record<string, string> = {
+  north: "北方", south: "南方", east: "東方", west: "西方",
+  up: "上方", down: "下方", in: "裡面", out: "外面",
 };
 
 const CX = 220;
-const CY = 160;
+const CY = 165;
 
 interface Props {
   look: LookResult;
@@ -30,8 +35,8 @@ function RoomNode({
 }: {
   x: number; y: number; name?: string; isCurrent: boolean; onClick?: () => void; direction?: string;
 }) {
-  const w = 74;
-  const h = 34;
+  const w = isCurrent ? 104 : 96;
+  const h = isCurrent ? 48 : 42;
   const displayName = name ?? "???";
   return (
     <g
@@ -40,33 +45,31 @@ function RoomNode({
       className={onClick ? "cursor-pointer" : ""}
       role={onClick ? "button" : undefined}
     >
-      {/* Glow filter for current room */}
       {isCurrent && (
-        <rect x={-3} y={-3} width={w + 6} height={h + 6} rx={7} fill="rgba(200,148,30,0.08)"
+        <rect x={-4} y={-4} width={w + 8} height={h + 8} rx={8} fill="rgba(200,144,48,0.07)"
           className="animate-pulse-gold"/>
       )}
       <rect
         x={0} y={0} width={w} height={h} rx={5}
-        fill={isCurrent ? "rgba(200,148,30,0.12)" : "rgba(26,25,23,0.9)"}
-        stroke={isCurrent ? "#C8941E" : "#3E3A35"}
-        strokeWidth={isCurrent ? 1.5 : 1}
-        className={onClick ? "hover:stroke-gold/60 transition-colors" : ""}
+        fill={isCurrent ? "rgba(200,144,48,0.14)" : "rgba(24,28,36,0.92)"}
+        stroke={isCurrent ? "#C89030" : "#303840"}
+        strokeWidth={isCurrent ? 2 : 1.2}
+        className={onClick ? "hover:stroke-forest/70 transition-colors" : ""}
       />
-      {/* Direction badge */}
       {direction && !isCurrent && (
-        <text x={w / 2} y={-6} textAnchor="middle"
-          className="fill-stone-500 font-mono" fontSize={9}>
+        <text x={w / 2} y={-8} textAnchor="middle"
+          className="fill-stone-500 font-mono" fontSize={13}>
           {DIR_ICON[direction] ?? direction}
         </text>
       )}
       <text
-        x={w / 2} y={h / 2 + 4}
+        x={w / 2} y={h / 2 + 5.5}
         textAnchor="middle"
         className={`font-cinzel select-none ${isCurrent ? "fill-gold-light" : "fill-stone-400"}`}
-        fontSize={isCurrent ? 9.5 : 8.5}
-        fontWeight={isCurrent ? "600" : "400"}
+        fontSize={isCurrent ? 14 : 13}
+        fontWeight={isCurrent ? "700" : "400"}
       >
-        {displayName.length > 10 ? displayName.slice(0, 9) + "…" : displayName}
+        {displayName.length > 11 ? displayName.slice(0, 10) + "…" : displayName}
       </text>
     </g>
   );
@@ -80,9 +83,9 @@ function ConnectionLine({ x1, y1, x2, y2, travelTime }: {
   return (
     <g>
       <line x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke="#3E3A35" strokeWidth={1} strokeDasharray="4 3"/>
-      <text x={mx} y={my - 4} textAnchor="middle"
-        className="fill-stone-600 font-mono" fontSize={8}>
+        stroke="#303840" strokeWidth={1.4} strokeDasharray="5 3"/>
+      <text x={mx} y={my - 6} textAnchor="middle"
+        className="fill-stone-500 font-mono" fontSize={13}>
         {travelTime}s
       </text>
     </g>
@@ -95,38 +98,32 @@ export function MapView({ look, onMove, moving }: Props) {
   return (
     <div className="flex flex-col flex-1 min-w-0">
       {/* Room header */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
-        <div>
-          <h2 className="font-cinzel text-base font-semibold text-gold-light tracking-wide"
-            style={{ textShadow: "0 0 10px rgba(200,148,30,0.4)" }}>
+      <div className="flex items-start justify-between px-5 pt-4 pb-2 gap-4">
+        <div className="min-w-0">
+          <h2 className="font-cinzel text-xl font-bold text-gold-light tracking-wide leading-tight"
+            style={{ textShadow: "0 0 14px rgba(200,144,48,0.5)" }}>
             {place.name}
           </h2>
-          <p className="font-inter text-xs text-stone-400 mt-0.5 leading-relaxed max-w-md">
+          <p className="font-inter text-base text-stone-400 mt-1 leading-relaxed max-w-md">
             {place.description}
           </p>
         </div>
         {moving && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded border border-ember/40 bg-ember/10 animate-travel-pulse shrink-0 ml-4">
-            <svg viewBox="0 0 16 16" className="w-3 h-3" fill="#D4700A">
+          <div className="flex items-center gap-2 px-3 py-2 rounded border border-ember/50 bg-ember/10 animate-travel-pulse shrink-0">
+            <svg viewBox="0 0 16 16" className="w-4 h-4" fill="#D06820">
               <path d="M8 1 L10 6 L15 6 L11 9.5 L12.5 14.5 L8 11.5 L3.5 14.5 L5 9.5 L1 6 L6 6 Z"/>
             </svg>
-            <span className="font-mono text-[10px] text-ember tracking-wider">TRAVELING</span>
+            <span className="font-inter text-sm font-semibold text-ember tracking-wider">旅途中</span>
           </div>
         )}
       </div>
 
       {/* SVG Map */}
-      <div className="relative flex-1 mx-4 mb-2 rounded-lg overflow-hidden border border-stone-700/30 bg-stone-950/50"
-        style={{ minHeight: 280, maxHeight: 340 }}>
-        {/* Stone texture overlay */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{
-            backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(200,148,30,0.3) 39px, rgba(200,148,30,0.3) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(200,148,30,0.3) 39px, rgba(200,148,30,0.3) 40px)",
-          }}/>
-
+      <div className="relative flex-1 mx-4 mb-2 rounded-lg overflow-hidden border border-stone-700/40 bg-stone-950/60"
+        style={{ minHeight: 300, maxHeight: 360 }}>
         <svg
           width="100%" height="100%"
-          viewBox="0 0 440 320"
+          viewBox="0 0 440 330"
           preserveAspectRatio="xMidYMid meet"
           className="w-full h-full"
         >
@@ -159,61 +156,61 @@ export function MapView({ look, onMove, moving }: Props) {
             );
           })}
 
-          {/* Current room (drawn on top) */}
+          {/* Current room */}
           <RoomNode
             x={CX} y={CY}
             name={place.name}
             isCurrent={true}
           />
 
-          {/* Center dot */}
-          <circle cx={CX} cy={CY} r={3} fill="#C8941E" opacity="0.9">
+          {/* You-are-here dot */}
+          <circle cx={CX} cy={CY} r={3.5} fill="#C89030" opacity="0.9">
             <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite"/>
           </circle>
         </svg>
 
-        {/* Legend */}
+        {/* 圖例 */}
         <div className="absolute bottom-2 right-3 flex items-center gap-3 opacity-50">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm border border-gold/60 bg-gold/10"/>
-            <span className="font-mono text-[9px] text-stone-500">current</span>
+            <span className="font-inter text-xs text-stone-500">所在地</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <div className="w-3 h-0 border-t border-dashed border-stone-600"/>
-            <span className="font-mono text-[9px] text-stone-500">passage</span>
+            <span className="font-inter text-xs text-stone-500">通道</span>
           </div>
         </div>
       </div>
 
-      {/* Exits quick-info */}
-      {exits.length > 0 && (
-        <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-          {exits.map((exit) => (
-            <ExitChip key={exit.direction} exit={exit} onMove={onMove} disabled={moving}/>
-          ))}
-        </div>
-      )}
+    
     </div>
   );
 }
 
 function ExitChip({ exit, onMove, disabled }: { exit: Exit; onMove: (d: string) => void; disabled: boolean }) {
+  const dirZh = DIR_ZH[exit.direction] ?? exit.direction;
+  const dirIcon = DIR_ICON[exit.direction] ?? exit.direction;
   return (
     <button
       onClick={() => onMove(exit.direction)}
       disabled={disabled}
       title={exit.exit_description}
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-stone-600/50 bg-stone-900/60 text-stone-400
-        hover:border-gold/40 hover:text-gold-light hover:bg-stone-800/60
+      className="flex items-center gap-2.5 px-4 py-2.5 rounded border border-stone-700/50 bg-stone-900/70 text-stone-400
+        hover:border-forest/60 hover:text-forest-light hover:bg-forest/10
         disabled:opacity-40 disabled:cursor-not-allowed
         transition-all duration-150 cursor-pointer group"
+      style={{ boxShadow: undefined }}
+      onMouseEnter={(e) => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 10px rgba(46,112,72,0.28)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
     >
-      <span className="font-mono text-[10px] font-medium text-gold/70 group-hover:text-gold">
-        {DIR_ICON[exit.direction] ?? exit.direction.toUpperCase()}
+      {/* 方向字母圖示 — font-mono 保留等寬特性 */}
+      <span className="font-mono text-base font-bold text-forest/80 group-hover:text-forest-light transition-colors">
+        {dirIcon}
       </span>
-      <span className="font-inter text-[11px]">{exit.direction}</span>
-      <span className="font-mono text-[9px] text-stone-600 group-hover:text-stone-500">
-        {exit.travel_time_seconds}s
+      {/* 方向中文名稱 — font-inter */}
+      <span className="font-inter text-lg text-stone-200 group-hover:text-stone-100">{dirZh}</span>
+      <span className="font-inter text-sm text-stone-600 group-hover:text-stone-400 transition-colors">
+        {exit.travel_time_seconds}秒
       </span>
     </button>
   );

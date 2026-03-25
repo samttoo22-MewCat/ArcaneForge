@@ -191,9 +191,17 @@
     {"template": "goblin_warrior", "place_id": "room_cave_main_hall", "id": "npc_goblin_warrior_01"}
   ],
   "initial_items": [
-    {"item_id": "barrel_oil", "instance_id": "item_barrel_cave_01", "place_id": "room_cave_main_hall", "durability": 30, "quantity": 1},
-    {"item_id": "torch", "instance_id": "item_torch_01", "place_id": "room_cave_entrance", "durability": 15, "quantity": 1},
-    {"item_id": "key_dungeon_01", "instance_id": "item_key_01", "place_id": "room_cave_entrance", "durability": 999, "quantity": 1},
-    {"item_id": "potion_health_small", "instance_id": "item_potion_01", "place_id": "room_town_square", "durability": 1, "quantity": 1}
+    {"item_id": "barrel_oil",           "instance_id": "item_barrel_cave_01",  "place_id": "room_cave_main_hall", "durability": 30,  "quantity": 1},
+    {"item_id": "torch",                "instance_id": "item_torch_01",         "place_id": "room_cave_entrance",  "durability": 15,  "quantity": 1},
+    {"item_id": "torch",                "instance_id": "item_torch_02",         "place_id": "room_wilds_path",     "durability": 20,  "quantity": 1},
+    {"item_id": "key_dungeon_01",       "instance_id": "item_key_01",           "place_id": "room_cave_entrance",  "durability": 999, "quantity": 1},
+    {"item_id": "potion_health_small",  "instance_id": "item_potion_01",        "place_id": "room_town_square",    "durability": 1,   "quantity": 1},
+    {"item_id": "potion_health_small",  "instance_id": "item_potion_02",        "place_id": "room_inn_main",       "durability": 1,   "quantity": 3},
+    {"item_id": "potion_health_medium", "instance_id": "item_potion_med_01",    "place_id": "room_town_square",    "durability": 1,   "quantity": 1},
+    {"item_id": "dagger_steel",         "instance_id": "item_dagger_01",        "place_id": "room_town_square",    "durability": 80,  "quantity": 1},
+    {"item_id": "sword_iron",           "instance_id": "item_sword_01",         "place_id": "room_cave_entrance",  "durability": 60,  "quantity": 1},
+    {"item_id": "armor_leather",        "instance_id": "item_armor_01",         "place_id": "room_cave_main_hall", "durability": 50,  "quantity": 1},
+    {"item_id": "herb_red",             "instance_id": "item_herb_01",          "place_id": "room_wilds_path",     "durability": 10,  "quantity": 5},
+    {"item_id": "coin_copper",          "instance_id": "item_coin_01",          "place_id": "room_town_square",    "durability": 999, "quantity": 10}
   ]
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { api, setLlmKey } from "./api";
 import { ActionBar } from "./components/ActionBar";
 import { EventLog } from "./components/EventLog";
@@ -8,6 +8,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { MapView } from "./components/MapView";
 import { StatsPanel } from "./components/StatsPanel";
 import { useSSE } from "./hooks/useSSE";
+import { BackpackPanel } from "./components/BackpackPanel";
 import type { GameEvent, GameState, LookResult, Player } from "./types";
 
 // ─── State / Reducer ──────────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ const INITIAL: GameState = { player: null, look: null, events: [], connected: fa
 function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => void }) {
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [backpackOpen, setBackpackOpen] = useState(false);
   const lookPending = useRef(false);
 
   // ── Data fetching ──
@@ -244,39 +246,47 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
   }
 
   const isTraveling = player.is_traveling;
-  const exitDirections = look.exits.map((e) => e.direction);
 
   return (
-    <div className="flex flex-col h-screen bg-void overflow-hidden">
-      <Header player={player} connected={connected} onLogout={onLogout}/>
+    <>
+      <div className="flex flex-col h-screen bg-void overflow-hidden">
+        <Header player={player} connected={connected} onLogout={onLogout}/>
 
-      <div className="flex flex-1 min-h-0">
-        <StatsPanel player={player}/>
+        <div className="flex flex-1 min-h-0">
+          <StatsPanel player={player}/>
 
-        <div className="flex flex-col flex-1 min-w-0">
-          <div className="flex flex-1 min-h-0">
-            <MapView look={look} onMove={handleMove} moving={isTraveling}/>
-            <EventLog events={events}/>
+          <div className="flex flex-col flex-1 min-w-0">
+            {/* 上方：地圖 + 房間物品/在場者 + 事件日誌 並排 */}
+            <div className="flex flex-1 min-h-0">
+              <MapView look={look} onMove={handleMove} moving={isTraveling}/>
+              <InventoryPanel
+                items={look.items}
+                npcs={look.npcs}
+                onPickup={handlePickup}
+                disabled={isTraveling}
+              />
+              <EventLog events={events}/>
+            </div>
+
+            <ActionBar
+              exits={look.exits}
+              onMove={handleMove}
+              onSay={handleSay}
+              onDo={handleDo}
+              onLook={refreshLook}
+              onBackpack={() => setBackpackOpen(true)}
+              disabled={isTraveling}
+            />
           </div>
-
-          <ActionBar
-            exits={exitDirections}
-            onMove={handleMove}
-            onSay={handleSay}
-            onDo={handleDo}
-            onLook={refreshLook}
-            disabled={isTraveling}
-          />
-
-          <InventoryPanel
-            items={look.items}
-            npcs={look.npcs}
-            onPickup={handlePickup}
-            disabled={isTraveling}
-          />
         </div>
       </div>
-    </div>
+
+      <BackpackPanel
+        playerId={player.id}
+        open={backpackOpen}
+        onClose={() => setBackpackOpen(false)}
+      />
+    </>
   );
 }
 
@@ -324,9 +334,7 @@ export default function App() {
   return <GameHUD playerId={playerId} onLogout={handleLogout}/>;
 }
 
-// ─── Hooks ────────────────────────────────────────────────────────────────────
 
-import { useState } from "react";
 
 function useLocalStorage<T>(key: string, initial: T): [T, (v: T) => void] {
   const [val, setVal] = useState<T>(() => {

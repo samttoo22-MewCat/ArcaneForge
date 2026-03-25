@@ -47,6 +47,7 @@ class PlayerArrivedEvent(BaseEvent):
     player_name: str = ""
     from_place_id: str = ""
     to_place_id: str = ""
+    to_place_name: str = ""  # 房間顯示名稱，供前端直接顯示
     direction: str = ""
 
 

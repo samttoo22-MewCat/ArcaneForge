@@ -200,6 +200,7 @@ async def _arrive(
         player_name=player_name,
         from_place_id=old_place_id,
         to_place_id=new_place_id,
+        to_place_name=(new_place or {}).get("name", ""),  # 帶入房間顯示名稱
         direction=direction,
     ).to_dict()
     await bus.publish_room(new_place_id, arrived_event)
@@ -209,6 +210,7 @@ async def _arrive(
 async def look(
     player_id: str,
     graph=Depends(get_graph),
+    item_master: dict = Depends(get_item_master),
 ):
     """Return current room description with visible exits (direction + description + travel time)."""
     player = await player_repo.get_player(graph, player_id)
@@ -228,7 +230,15 @@ async def look(
         "place": place,
         "exits": exits,
         "npcs": [{"id": n["id"], "name": n["name"], "behavior_state": n.get("behavior_state")} for n in npcs],
-        "items": [{"instance_id": i["instance_id"], "item_id": i["item_id"], "quantity": i.get("quantity", 1)} for i in items],
+        "items": [
+            {
+                "instance_id": i["instance_id"],
+                "item_id": i["item_id"],
+                "name": item_master.get(i["item_id"], {}).get("name", i["item_id"]),  # 中文顯示名
+                "quantity": i.get("quantity", 1),
+            }
+            for i in items
+        ],
         "player_traveling": player.get("is_traveling", False),
         "travel_arrives_at": player.get("travel_arrives_at"),
     }
@@ -340,6 +350,29 @@ async def pickup(
     ).to_dict()
     await bus.publish_room(player["current_place_id"], event)
     return {"success": True}
+
+
+@router.get("/{player_id}/inventory")
+async def get_inventory(
+    player_id: str,
+    graph=Depends(get_graph),
+    item_master=Depends(get_item_master),
+):
+    player = await player_repo.get_player(graph, player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+    raw = await item_repo.get_player_inventory(graph, player_id)
+    result = []
+    for inst in raw:
+        master = item_master.get(inst.get("item_id", ""), {})
+        result.append({
+            **inst,
+            "name": master.get("name", inst.get("item_id", "")),
+            "description": master.get("description", ""),
+            "category": master.get("category", ""),
+            "weight": master.get("weight", 0),
+        })
+    return {"items": result}
 
 
 # ── Must be LAST — wildcard catches any GET /player/{id} not matched above ──

@@ -29,45 +29,75 @@ const EVENT_PREFIX: Record<string, string> = {
   grab_contest_resolved: "◈",
 };
 
+const DIR_ZH: Record<string, string> = {
+  north: "北方", south: "南方", east: "東方", west: "西方",
+  up: "上方", down: "下方", in: "裡面", out: "外面",
+};
+
+// 移動方向的反方向：往北走 → 從南方進入
+const OPPOSITE_DIR: Record<string, string> = {
+  north: "南方", south: "北方", east: "西方", west: "東方",
+  up: "下方", down: "上方", in: "外面", out: "裡面",
+};
+
 function formatEvent(event: GameEvent): string {
   const d = event as Record<string, unknown>;
+  const dir = (d.direction as string) ?? "";
+  const dirZh = DIR_ZH[dir] ?? dir;
+  // 抗達方向：往北走，就是從南方進入
+  const arriveFromZh = OPPOSITE_DIR[dir] ?? dirZh;
   switch (event.event_type) {
     case "player_traveling":
-      return `${d.player_name} sets off towards the ${d.direction}... (${d.travel_time_seconds}s)`;
-    case "player_arrived":
-      return `${d.player_name} arrives from the ${d.direction}.`;
+      return `${d.player_name} 出發前往${dirZh}…（${d.travel_time_seconds}秒）`;
+    case "player_arrived":{
+      // 優先用 to_place_name（顯示名稱），沒有則不顯示地點
+      const placeName = (d.to_place_name as string) ?? "";
+      const placeStr = placeName ? `，來到「${placeName}」` : "";
+      return `${d.player_name} 從${arriveFromZh}走來${placeStr}。`;
+    }
     case "player_said":
-      return `${d.player_name}: "${d.message}"`;
+      return `${d.player_name}：「${d.message}」`;
     case "combat_started":
-      return `Combat erupts! ${(d.combatants as {name:string}[])?.map(c => c.name).join(" vs ") ?? ""}`;
+      return `戰鬥爆發！${(d.combatants as {name:string}[])?.map(c => c.name).join(" vs ") ?? ""}`;
     case "combat_round":
-      return `${d.actor_id} strikes ${d.target_id} for ${d.damage} damage. ${d.narrative_hint ?? ""}`;
+      return `${d.actor_id} 攻擊了 ${d.target_id}，造成 ${d.damage} 點傷害。${d.narrative_hint ? " " + d.narrative_hint : ""}`;
     case "combat_ended":
-      return d.winner_id ? `${d.winner_id} is victorious!` : "The battle concludes.";
+      return d.winner_id ? `${d.winner_id} 獲得了勝利！` : "戰鬥結束。";
     case "npc_action":
-      return `${d.npc_name} ${d.action_type}${d.narrative_hint ? ": " + d.narrative_hint : ""}`;
-    case "world_state_change":
-      return `The world stirs... ${d.change_type}`;
+      return `${d.npc_name} ${d.action_type}${d.narrative_hint ? "：" + d.narrative_hint : ""}`;
+    case "world_state_change": {
+      const ct = d.change_type as string;
+      const details = (d.details ?? {}) as Record<string, unknown>;
+      if (ct === "item_picked_up") {
+        const who = (details.player_id as string) ?? "有人";
+        return `${who} 撿起了一件物品。`;
+      }
+      if (ct === "item_dropped") {
+        const who = (details.player_id as string) ?? "有人";
+        return `${who} 丟下了一件物品。`;
+      }
+      if (ct === "npc_state_changed") return `${details.npc_id ?? "NPC"} 改變了狀態。`;
+      return "世界發生了變化。";
+    }
     case "system_announcement":
       return String(d.message ?? "");
     case "grab_contest_open":
-      return `A ${d.item_name} appears! Grab it quickly!`;
+      return `出現了 ${d.item_name}！快去撿！`;
     case "grab_contest_resolved":
-      return d.winner_id ? `${d.winner_id} snatches the item!` : "The item vanishes unclaimed.";
+      return d.winner_id ? `${d.winner_id} 搶先拿到了物品！` : "物品消失了，無人取得。";
     default:
       return JSON.stringify(event);
   }
 }
 
 function formatTime(ts: number): string {
-  return new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return new Date(ts * 1000).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 export function EventLog({ events }: { events: GameEvent[] }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll: only if user is near the bottom
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -76,24 +106,26 @@ export function EventLog({ events }: { events: GameEvent[] }) {
   }, [events]);
 
   return (
-    <aside className="flex flex-col w-72 shrink-0 bg-stone-950/60 border-l border-stone-700/30">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-stone-700/30">
-        <div className="flex items-center gap-2">
-          <svg viewBox="0 0 12 12" className="w-3 h-3" fill="#C8941E" opacity="0.7">
+    <aside className="flex flex-col w-96 shrink-0 bg-stone-950/60 border-l border-stone-700/30">
+      {/* 標題列 — 「戰報」是重要標題，保留 font-cinzel */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700/30">
+        <div className="flex items-center gap-2.5">
+          <svg viewBox="0 0 12 12" className="w-3.5 h-3.5" fill="#C8941E" opacity="0.7">
             <circle cx="6" cy="6" r="3" fill="none" stroke="#C8941E" strokeWidth="1.5"/>
             <circle cx="6" cy="6" r="1" fill="#C8941E"/>
           </svg>
-          <span className="font-cinzel text-[10px] tracking-widest text-stone-400 uppercase">Chronicle</span>
+          {/* 「戰報」標題 — 保留 font-cinzel */}
+          <span className="font-cinzel text-base tracking-widest text-stone-400 uppercase">事件日誌</span>
         </div>
-        <span className="font-mono text-[10px] text-stone-600">{events.length} events</span>
+        {/* 事件數量 — 非標題，改 font-inter */}
+        <span className="font-inter text-sm text-stone-600">{events.length} 則紀錄</span>
       </div>
 
-      {/* Events */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 scrollbar-thin">
+      {/* 事件列表 */}
+      <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-1 scrollbar-thin">
         {events.length === 0 && (
-          <p className="font-mono text-[11px] text-stone-700 text-center mt-8 italic">
-            The world is silent...
+          <p className="font-inter text-base text-stone-600 text-center mt-10 italic">
+            世界一片寂靜...
           </p>
         )}
         {events.map((event) => {
@@ -102,13 +134,14 @@ export function EventLog({ events }: { events: GameEvent[] }) {
           const text = formatEvent(event);
           return (
             <div key={event.id}
-              className="flex gap-2 py-1 border-b border-stone-800/40 last:border-0 animate-glow-in group">
-              <span className="font-mono text-[11px] mt-0.5 shrink-0 w-4 text-center" style={{ color }}>
+              className="flex gap-3 py-2 border-b border-stone-800/40 last:border-0 animate-glow-in group">
+              <span className="font-mono text-base mt-0.5 shrink-0 w-5 text-center" style={{ color }}>
                 {prefix}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="font-mono text-[11px] leading-relaxed text-stone-300 break-words">{text}</p>
-                <p className="font-mono text-[9px] text-stone-700 mt-0.5 group-hover:text-stone-600 transition-colors">
+                {/* 事件文字 — 改 font-inter */}
+                <p className="font-inter text-base leading-snug text-stone-200 break-words">{text}</p>
+                <p className="font-inter text-xs text-stone-600 mt-0.5 group-hover:text-stone-500 transition-colors">
                   {formatTime(event.timestamp)}
                 </p>
               </div>

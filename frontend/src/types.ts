@@ -42,6 +42,7 @@ export interface NPC {
 export interface ItemInstance {
   instance_id: string;
   item_id: string;
+  name?: string;        // 中文顯示名（從 item_master 查）
   quantity: number;
 }
 

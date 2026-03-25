@@ -11,10 +11,12 @@ html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #0C0A09;
-  color: #F4EFE8;
+  /* 更暗更冷的石牆底色 */
+  background-color: #040608;
+  color: #E0E8F0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 15px;
 }
 
 body {
@@ -23,18 +25,18 @@ body {
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0D0C0B;
+  background: #090C12;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3E3A35;
-  border-radius: 2px;
+  background: #252E3E;
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #5A5248;
+  background: #374455;
 }
 
 /* ── SVG font classes ── */
@@ -55,21 +57,16 @@ text.font-cinzel {
 text.font-mono {
   font-family: "JetBrains Mono", monospace;
 }
-text.fill-gold-light {
-  fill: #F0C060;
-}
-text.fill-stone-400 {
-  fill: #B0A89E;
-}
-text.fill-stone-500 {
-  fill: #8A8078;
-}
-text.fill-stone-600 {
-  fill: #625A54;
-}
+
+/* ── SVG fill overrides (match new cold-stone palette) ── */
+text.fill-gold-light   { fill: #E8B050; }
+text.fill-forest-light { fill: #4A9E60; }
+text.fill-stone-400    { fill: #8EA0B4; }
+text.fill-stone-500    { fill: #5A6E82; }
+text.fill-stone-600    { fill: #374455; }
 
 /* ── Focus ring ── */
 :focus-visible {
-  outline: 2px solid rgba(200,148,30,0.6);
+  outline: 2px solid rgba(74,158,96,0.65);
   outline-offset: 2px;
 }

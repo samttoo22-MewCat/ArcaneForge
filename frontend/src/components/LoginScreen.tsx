@@ -23,13 +23,13 @@ export function LoginScreen({ onLogin }: Props) {
       {/* Radial ambient glow */}
       <div className="absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse 60% 50% at 50% 55%, rgba(212,160,48,0.07) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse 60% 50% at 50% 55%, rgba(46,112,72,0.06) 0%, transparent 70%)",
         }}/>
 
       {/* Rune grid */}
-      <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
+      <div className="absolute inset-0 opacity-[0.035] pointer-events-none"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4A030' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232E7048' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }}
       />
 
@@ -37,21 +37,22 @@ export function LoginScreen({ onLogin }: Props) {
         {/* Logo */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-5 rounded-full border border-gold/40 bg-stone-900"
-            style={{ boxShadow: "0 0 40px rgba(212,160,48,0.3), inset 0 0 20px rgba(0,0,0,0.6)" }}>
+            style={{ boxShadow: "0 0 40px rgba(46,112,72,0.2), inset 0 0 20px rgba(0,0,0,0.7)" }}>
             <svg viewBox="0 0 48 48" className="w-10 h-10 animate-pulse-gold" fill="none">
-              <polygon points="24,4 44,36 4,36" fill="none" stroke="#D4A030" strokeWidth="1.8"/>
-              <polygon points="24,12 38,34 10,34" fill="rgba(212,160,48,0.1)" stroke="#D4A030" strokeWidth="0.8" strokeDasharray="3 2"/>
-              <circle cx="24" cy="23" r="4" fill="#D4A030" opacity="0.9"/>
-              <line x1="24" y1="4" x2="24" y2="44" stroke="#D4A030" strokeWidth="0.6" opacity="0.35"/>
-              <line x1="4" y1="24" x2="44" y2="24" stroke="#D4A030" strokeWidth="0.6" opacity="0.35"/>
+              <polygon points="24,4 44,36 4,36" fill="none" stroke="#2E7048" strokeWidth="1.8"/>
+              <polygon points="24,12 38,34 10,34" fill="rgba(46,112,72,0.12)" stroke="#2E7048" strokeWidth="0.8" strokeDasharray="3 2"/>
+              <circle cx="24" cy="23" r="4" fill="#2E7048" opacity="0.9"/>
+              <line x1="24" y1="4" x2="24" y2="44" stroke="#2E7048" strokeWidth="0.6" opacity="0.4"/>
+              <line x1="4" y1="24" x2="44" y2="24" stroke="#2E7048" strokeWidth="0.6" opacity="0.4"/>
             </svg>
           </div>
           <h1 className="font-cinzel text-4xl font-black tracking-widest text-gold-light"
             style={{ textShadow: "0 0 24px rgba(212,160,48,0.7), 0 2px 6px rgba(0,0,0,0.9)" }}>
             ARCANEFORGE
           </h1>
-          <p className="mt-2 font-inter text-xs tracking-[0.35em] text-stone-400 uppercase">
-            The Living World Awaits
+          {/* 副標 — 非主標題，改 font-inter */}
+          <p className="mt-2 font-inter text-sm tracking-widest text-stone-500">
+            世界正在等待你的到來
           </p>
         </div>
 
@@ -60,31 +61,33 @@ export function LoginScreen({ onLogin }: Props) {
           className="bg-stone-900 border border-stone-700/70 rounded-lg p-7"
           style={{ boxShadow: "0 8px 48px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05)" }}>
 
-          {/* Player ID */}
+          {/* 玩家 ID */}
           <div className="mb-5">
-            <label className="block font-cinzel text-[10px] tracking-widest text-stone-400 uppercase mb-2">
-              Player ID
+            {/* label 非標題，改 font-inter */}
+            <label className="block font-inter text-sm font-semibold text-stone-400 mb-2">
+              玩家 ID
             </label>
             <input
               type="text"
               value={playerId}
               onChange={(e) => setPlayerId(e.target.value)}
-              placeholder="e.g. hero_001"
-              className="w-full bg-stone-800 border border-stone-600 rounded px-4 py-3
-                text-stone-100 font-inter text-sm placeholder-stone-600
-                focus:outline-none focus:border-gold/60 focus:ring-1 focus:ring-gold/25
+              placeholder="例如：hero_001"
+              className="w-full bg-stone-900 border border-stone-700 rounded px-4 py-3
+                text-stone-100 font-inter text-base placeholder-stone-600
+                focus:outline-none focus:border-forest/60 focus:ring-1 focus:ring-forest/30
                 transition-colors"
               autoFocus
             />
           </div>
 
-          {/* OpenRouter API Key */}
+          {/* OpenRouter API 金鑰 */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <label className="font-cinzel text-[10px] tracking-widest text-stone-400 uppercase">
-                OpenRouter API Key
+              {/* label 非標題，改 font-inter */}
+              <label className="font-inter text-sm font-semibold text-stone-400">
+                OpenRouter API 金鑰
               </label>
-              <span className="font-mono text-[9px] text-stone-600 tracking-wider">optional · for DM rulings</span>
+              <span className="font-inter text-xs text-stone-600">選項 · 用於 DM 袃裁</span>
             </div>
             <div className="relative">
               <input
@@ -92,16 +95,16 @@ export function LoginScreen({ onLogin }: Props) {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="sk-or-v1-..."
-                className="w-full bg-stone-800 border border-stone-600 rounded px-4 py-3 pr-10
-                  text-stone-100 font-mono text-xs placeholder-stone-600
-                  focus:outline-none focus:border-gold/60 focus:ring-1 focus:ring-gold/25
+                className="w-full bg-stone-900 border border-stone-700 rounded px-4 py-3 pr-10
+                  text-stone-100 font-mono text-sm placeholder-stone-600
+                  focus:outline-none focus:border-forest/60 focus:ring-1 focus:ring-forest/30
                   transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowKey((s) => !s)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300 cursor-pointer transition-colors"
-                aria-label={showKey ? "Hide key" : "Show key"}
+                aria-label={showKey ? "隱藏金鑰" : "顯示金鑰"}
               >
                 {showKey ? (
                   <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -116,8 +119,8 @@ export function LoginScreen({ onLogin }: Props) {
                 )}
               </button>
             </div>
-            <p className="mt-1.5 font-mono text-[10px] text-stone-600 leading-relaxed">
-              Used locally to power AI-driven DM actions. Never sent to our servers.
+            <p className="mt-1.5 font-inter text-xs text-stone-600 leading-relaxed">
+              在本機使用，用於驅動 AI GM 裁判。不會將金鑰傳輸到任何伺服器。
             </p>
           </div>
 
@@ -147,20 +150,22 @@ export function LoginScreen({ onLogin }: Props) {
             </span>
           </label>
 
+          {/* 進入按鈕 — 主要行動按鈕，保留大字體但改 font-inter（非展示標題）*/}
           <button
             type="submit"
             disabled={!playerId.trim()}
-            className="w-full py-3 font-cinzel text-sm font-semibold tracking-widest uppercase rounded cursor-pointer
-              bg-gold/15 border border-gold/50 text-gold-light
-              hover:bg-gold/25 hover:border-gold/80 hover:shadow-gold-sm
+            className="w-full py-3 font-inter text-base font-bold tracking-widest uppercase rounded cursor-pointer
+              bg-forest/20 border border-forest/60 text-forest-light
+              hover:bg-forest/35 hover:border-forest/90
               disabled:opacity-35 disabled:cursor-not-allowed
               transition-all duration-200"
+            style={{ boxShadow: playerId.trim() ? "0 0 14px rgba(46,112,72,0.3)" : "none" }}
           >
-            Enter the Realm
+            進入世界
           </button>
         </form>
 
-        <p className="mt-4 text-center font-mono text-[11px] text-stone-600">
+        <p className="mt-4 text-center font-inter text-xs text-stone-600">
           v0.1.0 · ArcaneForge MUD
         </p>
       </div>
