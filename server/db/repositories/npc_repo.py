@@ -45,6 +45,16 @@ async def create_npc(graph, props: dict) -> None:
     props.setdefault("is_hibernating", False)
     props.setdefault("frozen_at", None)
     props.setdefault("memory_summary", "")
+    # New NPC feature defaults
+    props.setdefault("personality", "aggressive")
+    props.setdefault("patrol_route", json.dumps([]))
+    props.setdefault("next_patrol_index", 0)
+    props.setdefault("patrol_cooldown_ticks", 0)
+    props.setdefault("mp", 0)
+    props.setdefault("mp_max", 0)
+    props.setdefault("skills", json.dumps([]))
+    props.setdefault("active_effects", json.dumps([]))
+    props.setdefault("dialogue_tree", json.dumps({}))
     safe_props = _sanitize_props(props)
     await graph.query(
         "MERGE (n:npc {id: $id}) SET n += $props",
@@ -91,6 +101,19 @@ async def update_npc_hp(graph, npc_id: str, new_hp: int) -> None:
     await graph.query(
         "MATCH (n:npc {id: $id}) SET n.hp = $hp",
         {"id": npc_id, "hp": new_hp},
+    )
+
+
+async def move_npc_to_place(
+    graph, npc_id: str, new_place_id: str, next_index: int, cooldown: int
+) -> None:
+    """Move a patrolling NPC to a new room and reset its patrol cooldown."""
+    await graph.query(
+        "MATCH (n:npc {id: $id}) "
+        "SET n.current_place_id = $place, "
+        "    n.next_patrol_index = $idx, "
+        "    n.patrol_cooldown_ticks = $cd",
+        {"id": npc_id, "place": new_place_id, "idx": next_index, "cd": cooldown},
     )
 
 

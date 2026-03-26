@@ -5,9 +5,23 @@ export interface Player {
   max_hp: number;
   mp: number;
   max_mp: number;
+  // Combat derived stats
   atk: number;
   def: number;
   spd: number;
+  // Six core attributes
+  str: number;
+  dex: number;
+  int: number;
+  wis: number;
+  cha: number;
+  luk: number;
+  // Progression
+  level: number;
+  xp: number;
+  stat_points: number;
+  classes: string[];
+  // Travel
   current_place_id: string;
   is_traveling: boolean;
   travel_destination_id?: string;
@@ -37,6 +51,22 @@ export interface NPC {
   id: string;
   name: string;
   behavior_state?: string;
+  npc_type?: string;  // "merchant" | "monster" | "guard"
+}
+
+export interface ShopItem {
+  item_id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  weight?: number;
+}
+
+export interface ShopData {
+  npc_id: string;
+  npc_name: string;
+  shop_inventory: ShopItem[];
 }
 
 export interface ItemInstance {
@@ -120,10 +150,14 @@ export type EventKind =
   | "combat_round"
   | "combat_ended"
   | "npc_action"
+  | "npc_dialogue"
+  | "npc_moved"
+  | "status_effect_applied"
   | "world_state_change"
   | "system_announcement"
   | "grab_contest_open"
-  | "grab_contest_resolved";
+  | "grab_contest_resolved"
+  | "dm_ruling_applied";
 
 export interface GameEvent {
   id: string;

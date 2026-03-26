@@ -147,3 +147,57 @@ class PlayerRespawnEvent(BaseEvent):
 class SystemAnnouncementEvent(BaseEvent):
     event_type: str = "system_announcement"
     message: str = ""
+
+
+@dataclass
+class DMRulingAppliedEvent(BaseEvent):
+    """Broadcast after a DM ruling is validated and applied by the server."""
+    event_type: str = "dm_ruling_applied"
+    player_id: str = ""
+    feasible: bool = True
+    # Dice details (empty when not feasible)
+    tier: str = ""          # "large_success" | ... | "large_failure" | ""
+    raw_roll: int = 0       # raw d20 value (transparency / fairness)
+    final_roll: int = 0     # raw_roll + stat_value + difficulty
+    threshold: int = 0
+    relevant_stat: str = ""
+    stat_value: int = 0
+    difficulty: int = 0
+    # Effect applied
+    effect_type: str = "no_effect"
+    modifier: float = 1.0
+    narrative_hint: str = ""
+    status_applied: Optional[str] = None
+    item_consumed: Optional[str] = None
+
+
+@dataclass
+class NPCDialogueEvent(BaseEvent):
+    event_type: str = "npc_dialogue"
+    npc_id: str = ""
+    npc_name: str = ""
+    npc_type: str = ""
+    player_id: str = ""
+    line: str = ""
+    dialogue_key: str = ""
+    place_id: str = ""
+
+
+@dataclass
+class NPCMovedEvent(BaseEvent):
+    event_type: str = "npc_moved"
+    npc_id: str = ""
+    npc_name: str = ""
+    from_place_id: str = ""
+    to_place_id: str = ""
+
+
+@dataclass
+class StatusEffectAppliedEvent(BaseEvent):
+    event_type: str = "status_effect_applied"
+    target_id: str = ""
+    target_name: str = ""
+    effect_type: str = ""
+    stacks: int = 1
+    source_id: str = ""
+    room_id: str = ""

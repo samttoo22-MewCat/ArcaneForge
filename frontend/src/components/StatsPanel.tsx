@@ -41,12 +41,36 @@ function StatBar({
   );
 }
 
-function StatRow({ label, value }: { label: string; value: number | string }) {
+const STAT_TOOLTIPS: Record<string, string> = {
+  STR: "物理攻擊力與蠻力判定。影響近戰傷害、破門、搬重物與壓制敵人的成功率。戰士與狂戰士的核心屬性。",
+  DEX: "速度、閃避與精準動作。影響潛行、遠程攻擊精準度、先手順序判定與躲避攻擊的能力。遊俠與盜賊的核心屬性。",
+  INT: "奧術學識與邏輯推理。影響法術傷害倍率、製作成功率、鑑定物品與破解機關謎題的判定。法師的核心屬性。",
+  WIS: "直覺感知與靈性連結。影響神聖/治癒魔法效果、偵測陷阱埋伏、洞察 NPC 真實意圖，以及抵抗精神操控效果。聖職者的核心屬性。",
+  CHA: "社交魅力與領袖氣場。影響說服、欺騙、威脅、賄賂等社交行動的骰子判定，以及 NPC 對你的初始好感度。吟遊詩人的核心屬性。",
+  LUK: "命運之力。影響暴擊機率、稀有物品掉落率，以及難以預測的偶發事件結果。在絕境中或許能扭轉一切。",
+};
+
+function StatRow({
+  label, value, tooltip,
+}: {
+  label: string; value: number | string; tooltip?: string;
+}) {
+  const [show, setShow] = useState(false);
   return (
-    <div className="flex justify-between items-center py-3 border-b border-stone-800/60 last:border-0">
-      {/* 標籤：改 font-inter */}
+    <div
+      className="relative flex justify-between items-center py-3 border-b border-stone-800/60 last:border-0 cursor-default select-none"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
       <span className="font-inter text-sm font-semibold text-stone-500">{label}</span>
       <span className="font-mono text-2xl font-bold text-stone-100">{value}</span>
+      {tooltip && show && (
+        <div className="absolute left-0 bottom-full mb-2 z-50 w-52 rounded-lg border border-forest/40 bg-stone-950/95 px-3 py-2 shadow-xl pointer-events-none">
+          <p className="font-inter text-xs leading-relaxed text-stone-300">{tooltip}</p>
+          <div className="absolute left-4 top-full w-0 h-0"
+            style={{ borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid rgba(46,112,72,0.4)" }}/>
+        </div>
+      )}
     </div>
   );
 }
@@ -72,8 +96,15 @@ export function StatsPanel({ player }: Props) {
         <h2 className="font-cinzel text-lg font-bold text-stone-100 tracking-wide text-center leading-tight">
           {player.name}
         </h2>
-        {/* 職業標籤 — 非標題，改 font-inter */}
-        <p className="font-inter text-sm text-forest-light font-semibold tracking-wide mt-2">冒險者</p>
+        {/* 等級與職業 */}
+        <p className="font-inter text-sm text-forest-light font-semibold tracking-wide mt-1">
+          Lv.{player.level ?? 1}
+        </p>
+        <p className="font-inter text-xs text-stone-500 mt-0.5">
+          {(player.classes ?? []).length > 0
+            ? player.classes.join(" · ")
+            : "冒險者"}
+        </p>
       </div>
 
       {/* HP / MP 條 */}
@@ -91,12 +122,24 @@ export function StatsPanel({ player }: Props) {
         <div className="flex-1 h-px bg-stone-700/40"/>
       </div>
 
-      {/* 戰鬥數值 */}
+      {/* 六維屬性 — 滑鼠移到屬性上可見說明 */}
       <div className="px-1">
-        <StatRow label="攻擊" value={player.atk}/>
-        <StatRow label="防禦" value={player.def}/>
-        <StatRow label="速度" value={player.spd}/>
+        <StatRow label="力量 STR" value={player.str ?? 8} tooltip={STAT_TOOLTIPS.STR}/>
+        <StatRow label="敏捷 DEX" value={player.dex ?? 8} tooltip={STAT_TOOLTIPS.DEX}/>
+        <StatRow label="智力 INT" value={player.int ?? 8} tooltip={STAT_TOOLTIPS.INT}/>
+        <StatRow label="智慧 WIS" value={player.wis ?? 8} tooltip={STAT_TOOLTIPS.WIS}/>
+        <StatRow label="魅力 CHA" value={player.cha ?? 8} tooltip={STAT_TOOLTIPS.CHA}/>
+        <StatRow label="幸運 LUK" value={player.luk ?? 8} tooltip={STAT_TOOLTIPS.LUK}/>
       </div>
+
+      {/* 升級點數（有未分配點數時顯示） */}
+      {(player.stat_points ?? 0) > 0 && (
+        <div className="mx-1 rounded border border-gold/50 bg-gold/10 px-3 py-2 text-center">
+          <p className="font-inter text-sm font-semibold text-gold">
+            ✦ 未分配點數：{player.stat_points}
+          </p>
+        </div>
+      )}
 
       {/* 旅行中指示 */}
       {player.is_traveling && (

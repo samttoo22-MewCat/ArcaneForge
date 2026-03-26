@@ -38,7 +38,7 @@ export function ActionBar({ exits, onMove, onSay, onDo, onLook, onBackpack, disa
 
   function submitChat(e: React.FormEvent) {
     e.preventDefault();
-    const txt = chatInput.trim();
+    const txt = (tab === "say" ? chatInput : actionInput).trim();
     if (!txt) return;
     tab === "say" ? onSay(txt) : onDo(txt);
     setChatInput("");

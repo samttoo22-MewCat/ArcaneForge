@@ -26,6 +26,23 @@ router = APIRouter(prefix="/player", tags=["player"])
 BASE_SPD = 10
 
 
+def _classify_action(action_text: str, action_rules: dict) -> tuple[str, bool]:
+    """Keyword-based fast classifier. Returns (action_type, skip_dice)."""
+    action_types = action_rules.get("action_types", {})
+    scores: dict[str, int] = {}
+    for type_name, type_info in action_types.items():
+        if type_name == "other":
+            continue
+        keywords: list[str] = type_info.get("keywords", [])
+        score = sum(1 for kw in keywords if kw in action_text)
+        if score > 0:
+            scores[type_name] = score
+    if not scores:
+        return "other", False
+    best = max(scores, key=lambda t: scores[t])
+    return best, bool(action_types[best].get("skip_dice", False))
+
+
 def _actual_travel_time(base_seconds: int, player_spd: int) -> float:
     """Scale travel time by player speed. Minimum 1 second."""
     spd = max(1, player_spd)
@@ -58,7 +75,16 @@ class CreatePlayerRequest(BaseModel):
 
 
 DEFAULT_SPAWN = "room_town_square"
-DEFAULT_STATS = {"hp": 100, "max_hp": 100, "mp": 50, "max_mp": 50, "atk": 10, "def": 8, "spd": 10}
+DEFAULT_STATS = {
+    # Resources
+    "hp": 100, "max_hp": 100, "mp": 50, "max_mp": 50,
+    # Combat derived stats (gear-modifiable)
+    "atk": 10, "def": 8, "spd": 10,
+    # Six core attributes (leveling point distribution)
+    "str": 8, "dex": 8, "int": 8, "wis": 8, "cha": 8, "luk": 8,
+    # Progression
+    "level": 1, "xp": 0, "stat_points": 0, "classes": [],
+}
 
 
 @router.post("/create")
@@ -339,6 +365,7 @@ async def do_action(
     graph=Depends(get_graph),
     redis=Depends(get_redis),
     item_master: dict = Depends(get_item_master),
+    bus: EventBus = Depends(get_event_bus),
 ):
     """Step 1 of DM ruling flow: build and return signed prompt packet."""
     player = await player_repo.get_player(graph, req.player_id)
@@ -346,6 +373,22 @@ async def do_action(
         raise HTTPException(404, "Player not found")
 
     rules.can_use_free_action(player)
+
+    # Fast-path: keyword classify before touching LLM
+    from server.dm.prompt_builder import _load_action_rules as _load_ar
+    _action_rules = _load_ar()
+    detected_type, skip_dice = _classify_action(req.action, _action_rules)
+
+    if skip_dice:
+        # Chat / zero-cost action — broadcast as speech and skip DM entirely
+        event = PlayerSaidEvent(
+            player_id=req.player_id,
+            player_name=player.get("name", req.player_id),
+            message=req.action,
+            place_id=player["current_place_id"],
+        ).to_dict()
+        await bus.publish_room(player["current_place_id"], event)
+        return {"requires_ruling": False, "message": req.action}
 
     place = await place_repo.get_small_place(graph, player["current_place_id"])
     npcs = await npc_repo.get_npcs_in_place(graph, player["current_place_id"])
@@ -361,6 +404,7 @@ async def do_action(
         inventory_items=inventory,
         item_master=item_master,
         is_combat=player.get("is_in_combat", False),
+        detected_action_type=detected_type,
     )
 
     session_id = f"{req.player_id}_action_{uuid.uuid4().hex[:8]}"

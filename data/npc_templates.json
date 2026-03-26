@@ -7,9 +7,21 @@
     "def_": 3,
     "spd": 12,
     "luk": 4,
+    "mp": 0,
+    "mp_max": 0,
     "behavior_state": "patrol",
     "faction": "goblin_clan",
     "hostile_to": ["player"],
+    "personality": "evasive",
+    "patrol_route": [],
+    "next_patrol_index": 0,
+    "patrol_cooldown_ticks": 0,
+    "skills": [],
+    "active_effects": "[]",
+    "dialogue_tree": {
+      "taunt": "吱吱！你死定了！",
+      "flee_speech": "不好…逃跑！"
+    },
     "memory_summary": "",
     "loot_table": [
       {"item_id": "coin_copper", "chance": 0.8, "quantity": {"min": 1, "max": 5}},
@@ -24,9 +36,32 @@
     "def_": 6,
     "spd": 10,
     "luk": 3,
+    "mp": 10,
+    "mp_max": 10,
     "behavior_state": "patrol",
     "faction": "goblin_clan",
     "hostile_to": ["player"],
+    "personality": "aggressive",
+    "patrol_route": [],
+    "next_patrol_index": 0,
+    "patrol_cooldown_ticks": 0,
+    "skills": [
+      {
+        "id": "cleave",
+        "name": "橫掃",
+        "mp_cost": 5,
+        "cooldown_ticks": 3,
+        "cooldown_remaining": 0,
+        "damage_mult": 1.5,
+        "effect": null,
+        "target": "single"
+      }
+    ],
+    "active_effects": "[]",
+    "dialogue_tree": {
+      "taunt": "哥布林戰士怒吼著向你衝來！",
+      "flee_speech": "族長饒命！"
+    },
     "memory_summary": "",
     "loot_table": [
       {"item_id": "coin_copper", "chance": 0.9, "quantity": {"min": 3, "max": 10}},
@@ -41,10 +76,43 @@
     "def_": 2,
     "spd": 8,
     "luk": 7,
+    "mp": 30,
+    "mp_max": 30,
     "behavior_state": "idle",
     "faction": "goblin_clan",
     "hostile_to": ["player"],
     "element_tags": ["暗影"],
+    "personality": "defensive",
+    "patrol_route": [],
+    "next_patrol_index": 0,
+    "patrol_cooldown_ticks": 0,
+    "skills": [
+      {
+        "id": "hex",
+        "name": "詛咒",
+        "mp_cost": 8,
+        "cooldown_ticks": 4,
+        "cooldown_remaining": 0,
+        "damage_mult": 1.2,
+        "effect": "poison",
+        "target": "single"
+      },
+      {
+        "id": "shadow_bolt",
+        "name": "暗影箭",
+        "mp_cost": 5,
+        "cooldown_ticks": 2,
+        "cooldown_remaining": 0,
+        "damage_mult": 1.3,
+        "effect": null,
+        "target": "single"
+      }
+    ],
+    "active_effects": "[]",
+    "dialogue_tree": {
+      "taunt": "你的靈魂將成為我的祭品！",
+      "flee_speech": "黑暗保佑我！"
+    },
     "memory_summary": "",
     "loot_table": [
       {"item_id": "coin_copper", "chance": 0.7, "quantity": {"min": 2, "max": 8}},
@@ -60,9 +128,32 @@
     "def_": 4,
     "spd": 15,
     "luk": 6,
+    "mp": 0,
+    "mp_max": 0,
     "behavior_state": "patrol",
     "faction": "wild_beast",
     "hostile_to": ["player"],
+    "personality": "aggressive",
+    "patrol_route": [],
+    "next_patrol_index": 0,
+    "patrol_cooldown_ticks": 0,
+    "skills": [
+      {
+        "id": "savage_bite",
+        "name": "野蠻撕咬",
+        "mp_cost": 0,
+        "cooldown_ticks": 3,
+        "cooldown_remaining": 0,
+        "damage_mult": 1.3,
+        "effect": "bleed",
+        "target": "single"
+      }
+    ],
+    "active_effects": "[]",
+    "dialogue_tree": {
+      "taunt": "野狼低吼，露出銳利的牙齒。",
+      "flee_speech": "野狼夾著尾巴逃走了。"
+    },
     "memory_summary": "",
     "loot_table": [
       {"item_id": "herb_red",   "chance": 0.4, "quantity": {"min": 1, "max": 2}},
@@ -78,9 +169,22 @@
     "def_": 2,
     "spd": 8,
     "luk": 10,
+    "mp": 0,
+    "mp_max": 0,
     "behavior_state": "idle",
     "faction": "town_folk",
     "hostile_to": [],
+    "personality": "neutral",
+    "patrol_route": [],
+    "next_patrol_index": 0,
+    "patrol_cooldown_ticks": 0,
+    "skills": [],
+    "active_effects": "[]",
+    "dialogue_tree": {
+      "greeting": "歡迎光臨紅月旅店！旅途勞頓，需要什麼補給嗎？",
+      "trade_prompt": "請看看我的貨架，都是好東西。",
+      "farewell": "路上小心，冒險者。"
+    },
     "memory_summary": "一位中年女性，在紅月旅店工作多年，見過形形色色的冒險者。",
     "shop_inventory": [
       {"item_id": "potion_health_small",  "stock": 10, "price": 5},
@@ -99,9 +203,22 @@
     "def_": 8,
     "spd": 6,
     "luk": 5,
+    "mp": 0,
+    "mp_max": 0,
     "behavior_state": "idle",
     "faction": "town_folk",
     "hostile_to": [],
+    "personality": "neutral",
+    "patrol_route": [],
+    "next_patrol_index": 0,
+    "patrol_cooldown_ticks": 0,
+    "skills": [],
+    "active_effects": "[]",
+    "dialogue_tree": {
+      "greeting": "哼，又來了個要買刀的。說吧，要什麼？",
+      "trade_prompt": "我打的東西，品質保證。選好了就別囉嗦。",
+      "farewell": "好好保養你的武器，聽到沒。"
+    },
     "memory_summary": "石橋鎮唯一的鐵匠，雙臂粗壯如樹幹。據說年輕時曾是冒險者，退役後在此開鋪。",
     "shop_inventory": [
       {"item_id": "dagger_steel",  "stock": 5,  "price": 18},
@@ -120,9 +237,22 @@
     "def_": 1,
     "spd": 10,
     "luk": 12,
+    "mp": 0,
+    "mp_max": 0,
     "behavior_state": "idle",
     "faction": "town_folk",
     "hostile_to": [],
+    "personality": "neutral",
+    "patrol_route": [],
+    "next_patrol_index": 0,
+    "patrol_cooldown_ticks": 0,
+    "skills": [],
+    "active_effects": "[]",
+    "dialogue_tree": {
+      "greeting": "老闆！過來看看！什麼都有，絕對物超所值！",
+      "trade_prompt": "你眼光真好，這些都是上好的貨！",
+      "farewell": "下次再來，我給你打折！"
+    },
     "memory_summary": "在南市集擺攤的雜貨商，賣什麼的都有，來路不明但價格公道。",
     "shop_inventory": [
       {"item_id": "torch",               "stock": 30, "price": 1},
@@ -142,9 +272,22 @@
     "def_": 10,
     "spd": 9,
     "luk": 5,
+    "mp": 0,
+    "mp_max": 0,
     "behavior_state": "patrol",
     "faction": "town_guard",
     "hostile_to": ["criminal"],
+    "personality": "neutral",
+    "patrol_route": [],
+    "next_patrol_index": 0,
+    "patrol_cooldown_ticks": 0,
+    "skills": [],
+    "active_effects": "[]",
+    "dialogue_tree": {
+      "greeting": "站住！報上姓名。……好吧，看你不像壞人。安全為上，行事低調。",
+      "warning": "在這裡鬧事，別怪我不客氣。",
+      "allow": "通過吧，但別惹麻煩。"
+    },
     "memory_summary": "負責維持小鎮秩序的衛兵，對陌生人保持警戒。",
     "loot_table": []
   }

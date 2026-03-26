@@ -1,0 +1,58 @@
+{
+  "warrior": {
+    "name": "戰士",
+    "description": "精通近戰武器與護甲的職業戰士。高耐久度，擅長正面交鋒，是隊伍的防線核心。力量與體質是其主要成長屬性。",
+    "primary_stats": ["str", "con"],
+    "hp_bonus_per_level": 6,
+    "mp_bonus_per_level": 0,
+    "unlock_hint": "在訓練場完成基礎戰鬥訓練"
+  },
+  "ranger": {
+    "name": "遊俠",
+    "description": "行動迅速的野外獵人，擅長遠程攻擊、追蹤與自然魔法。靈活但防禦較薄。敏捷與智慧是其主要成長屬性。",
+    "primary_stats": ["dex", "wis"],
+    "hp_bonus_per_level": 4,
+    "mp_bonus_per_level": 2,
+    "unlock_hint": "在森林中完成生存試煉"
+  },
+  "mage": {
+    "name": "法師",
+    "description": "鑽研奧術的學者，能施放強大的元素魔法。魔力充沛但體力脆弱，須依靠距離與法術保護自身。智力是其核心成長屬性。",
+    "primary_stats": ["int"],
+    "hp_bonus_per_level": 2,
+    "mp_bonus_per_level": 8,
+    "unlock_hint": "在魔法學院通過入學考核"
+  },
+  "cleric": {
+    "name": "聖職者",
+    "description": "信奉神明的使者，以神聖魔法治癒盟友並驅逐黑暗。在聖地附近力量倍增，對亡靈生物有天然克制。智慧是其核心成長屬性。",
+    "primary_stats": ["wis"],
+    "hp_bonus_per_level": 4,
+    "mp_bonus_per_level": 5,
+    "unlock_hint": "在神殿完成奉獻儀式"
+  },
+  "rogue": {
+    "name": "盜賊",
+    "description": "行事低調的暗影職業，擅長偷竊、暗殺與解鎖陷阱。在暗處能力倍增，突襲傷害極高。敏捷與魅力是其主要成長屬性。",
+    "primary_stats": ["dex", "cha"],
+    "hp_bonus_per_level": 3,
+    "mp_bonus_per_level": 1,
+    "unlock_hint": "獲得盜賊公會的認可"
+  },
+  "berserker": {
+    "name": "狂戰士",
+    "description": "以憤怒為燃料的野性戰士，進入狂暴狀態後攻擊力大幅提升，但防禦相應下降。以攻代守，適合快速斬殺型戰鬥風格。力量是其核心成長屬性。",
+    "primary_stats": ["str"],
+    "hp_bonus_per_level": 5,
+    "mp_bonus_per_level": 0,
+    "unlock_hint": "在競技場中連續勝利五場"
+  },
+  "bard": {
+    "name": "吟遊詩人",
+    "description": "以音樂與言語影響世界的全能支援者。社交與輔助能力卓越，魔法偏向操控心靈與情緒。魅力是其核心成長屬性，可多職兼容性極強。",
+    "primary_stats": ["cha"],
+    "hp_bonus_per_level": 3,
+    "mp_bonus_per_level": 4,
+    "unlock_hint": "在酒館精彩表演並獲得人群認可"
+  }
+}

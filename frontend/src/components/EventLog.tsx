@@ -9,6 +9,9 @@ const EVENT_COLOR: Record<string, string> = {
   combat_round: "#E84040",
   combat_ended: "#E84040",
   npc_action: "#C8941E",
+  npc_dialogue: "#A0789E",
+  npc_moved: "#7A9870",
+  status_effect_applied: "#D07840",
   world_state_change: "#9A907E",
   system_announcement: "#9A907E",
   grab_contest_open: "#C040C0",
@@ -23,6 +26,9 @@ const EVENT_PREFIX: Record<string, string> = {
   combat_round: "⚔",
   combat_ended: "⚔",
   npc_action: "◆",
+  npc_dialogue: "◉",
+  npc_moved: "→",
+  status_effect_applied: "☠",
   world_state_change: "~",
   system_announcement: "◉",
   grab_contest_open: "◈",
@@ -85,6 +91,12 @@ function formatEvent(event: GameEvent): string {
       return `出現了 ${d.item_name}！快去撿！`;
     case "grab_contest_resolved":
       return d.winner_id ? `${d.winner_id} 搶先拿到了物品！` : "物品消失了，無人取得。";
+    case "npc_dialogue":
+      return `${d.npc_name}：「${d.line}」`;
+    case "npc_moved":
+      return `${d.npc_name} 離開了此地，前往他處。`;
+    case "status_effect_applied":
+      return `${d.target_name} 受到了【${d.effect_type}】效果！（${d.stacks} 層）`;
     default:
       return JSON.stringify(event);
   }

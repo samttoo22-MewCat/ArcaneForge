@@ -1,0 +1,8 @@
+{
+  "large_success":  { "damage_multiplier": 2.0, "heal_multiplier": 2.0,  "penalty": null },
+  "medium_success": { "damage_multiplier": 1.5, "heal_multiplier": 1.5,  "penalty": null },
+  "small_success":  { "damage_multiplier": 1.0, "heal_multiplier": 1.0,  "penalty": null },
+  "small_failure":  { "damage_multiplier": 0.0, "heal_multiplier": 0.0,  "penalty": null },
+  "medium_failure": { "damage_multiplier": 0.0, "heal_multiplier": 0.0,  "penalty": "skip_turn" },
+  "large_failure":  { "damage_multiplier": 0.0, "heal_multiplier": 0.0,  "penalty": "backfire_damage" }
+}

@@ -1,4 +1,5 @@
-import type { LookResult, Player } from "./types";
+import type { DMPromptPacket, DMRulingSubmission } from "./dm/schema";
+import type { LookResult, Player, ShopData } from "./types";
 
 const BASE = "/api/v1";
 
@@ -50,14 +51,60 @@ export const api = {
     ),
 
   doAction: (playerId: string, action: string) =>
-    json<{ success: boolean; nonce?: string; signed_packet?: unknown }>(
+    json<{ dm_packet: DMPromptPacket; requires_ruling: true } | { requires_ruling: false; message?: string }>(
       "/player/do",
       { method: "POST", body: JSON.stringify({ player_id: playerId, action }) }
     ),
+
+  submitRuling: (sub: DMRulingSubmission) =>
+    json<{
+      success: boolean;
+      feasible: boolean;
+      tier?: string;
+      raw_roll?: number;
+      final_roll?: number;
+      threshold?: number;
+      effect_type?: string;
+      modifier?: number;
+      narrative_hint?: string;
+      status_applied?: string | null;
+    }>("/dm/ruling", { method: "POST", body: JSON.stringify(sub) }),
 
   pickup: (playerId: string, itemInstanceId: string) =>
     json<{ success: boolean }>(
       "/player/pickup",
       { method: "POST", body: JSON.stringify({ player_id: playerId, item_instance_id: itemInstanceId }) }
+    ),
+
+  talkToNpc: (playerId: string, npcId: string) =>
+    json<{ dialogue: string; opens_shop: boolean; npc_id: string; npc_name: string; npc_type: string }>(
+      `/npc/${npcId}/talk`,
+      { method: "POST", body: JSON.stringify({ player_id: playerId }) }
+    ),
+
+  getNpcShop: (npcId: string) =>
+    json<ShopData>(`/npc/${npcId}/shop`),
+
+  getInventory: (playerId: string) =>
+    json<{ items: Array<{ instance_id: string; item_id: string; name: string; description: string; category: string; quantity: number; durability: number; weight: number }> }>(
+      `/player/${playerId}/inventory`
+    ),
+
+  buyItem: (playerId: string, npcId: string, itemId: string, quantity: number) =>
+    json<{ success: boolean; cost?: number }>(
+      "/player/buy",
+      { method: "POST", body: JSON.stringify({ player_id: playerId, npc_id: npcId, item_id: itemId, quantity }) }
+    ),
+
+  npcSayResponse: (npcId: string, playerId: string, line: string) =>
+    json<{ success: boolean }>(
+      `/npc/${npcId}/say_response`,
+      { method: "POST", body: JSON.stringify({ player_id: playerId, line }) }
+    ),
+
+  sellItem: (playerId: string, npcId: string, itemInstanceId: string) =>
+    json<{ success: boolean; received_coins?: number }>(
+      "/player/sell",
+      { method: "POST", body: JSON.stringify({ player_id: playerId, npc_id: npcId, item_instance_id: itemInstanceId }) }
     ),
 };

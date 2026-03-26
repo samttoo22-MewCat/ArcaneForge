@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { api, setLlmKey } from "./api";
+import { api, getLlmKey, setLlmKey } from "./api";
+import { callDM, DmTimeoutError } from "./dm/caller";
+import { renderNarrative, generateNpcResponse } from "./dm/slm_renderer";
+import type { DMRulingAppliedEvent } from "./dm/schema";
 import { ActionBar } from "./components/ActionBar";
 import { EventLog } from "./components/EventLog";
 import { Header } from "./components/Header";
@@ -9,6 +12,8 @@ import { MapView } from "./components/MapView";
 import { StatsPanel } from "./components/StatsPanel";
 import { useSSE } from "./hooks/useSSE";
 import { BackpackPanel } from "./components/BackpackPanel";
+import { DialogueModal } from "./components/DialogueModal";
+import { ShopPanel } from "./components/ShopPanel";
 import type { GameEvent, GameState, LookResult, Player } from "./types";
 
 // ─── State / Reducer ──────────────────────────────────────────────────────────
@@ -17,6 +22,7 @@ type Action =
   | { type: "SET_PLAYER"; player: Player }
   | { type: "SET_LOOK"; look: LookResult }
   | { type: "APPEND_EVENT"; event: GameEvent }
+  | { type: "UPDATE_EVENT"; id: string; updates: Partial<GameEvent> }
   | { type: "SET_CONNECTED"; connected: boolean }
   | { type: "UPDATE_TRAVEL"; is_traveling: boolean; travel_arrives_at?: number; travel_destination_id?: string };
 
@@ -32,6 +38,11 @@ function reducer(state: GameState, action: Action): GameState {
       return {
         ...state,
         events: [...state.events.slice(-MAX_EVENTS + 1), action.event],
+      };
+    case "UPDATE_EVENT":
+      return {
+        ...state,
+        events: state.events.map(e => e.id === action.id ? { ...e, ...action.updates } : e),
       };
     case "SET_CONNECTED":
       return { ...state, connected: action.connected };
@@ -59,6 +70,11 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [backpackOpen, setBackpackOpen] = useState(false);
+  const [dialogueState, setDialogueState] = useState<{
+    npcId: string; npcName: string; npcType: string;
+    dialogue: string; opensShop: boolean;
+  } | null>(null);
+  const [shopState, setShopState] = useState<{ npcId: string; npcName: string } | null>(null);
   const lookPending = useRef(false);
 
   // ── Data fetching ──
@@ -85,8 +101,8 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
     }
   }
 
-  async function refreshLook() {
-    if (lookPending.current) return;
+  async function refreshLook(force = false) {
+    if (!force && lookPending.current) return;
     lookPending.current = true;
     try {
       const look = await api.look(playerId);
@@ -130,7 +146,7 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
     if (event.event_type === "player_arrived" && d.player_id === playerId) {
       dispatch({ type: "UPDATE_TRAVEL", is_traveling: false });
       refreshPlayer();
-      refreshLook();
+      refreshLook(true); // force=true: 抵達時一定要更新，不受 lookPending 阻擋
     }
 
     // Refresh look when someone else moves into/out of our room
@@ -143,6 +159,62 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
 
     if (event.event_type === "world_state_change") {
       refreshLook();
+    }
+
+    // Refresh look when an NPC moves into/out of our room
+    if (event.event_type === "npc_moved") {
+      refreshLook();
+    }
+
+    // ── DM ruling applied ───────────────────────────────────────────────────
+    if (event.event_type === "dm_ruling_applied") {
+      const e = event as Record<string, unknown>;
+      const TIER_LABELS: Record<string, string> = {
+        large_success: "大成功", medium_success: "中等成功", small_success: "小成功",
+        small_failure: "小失敗", medium_failure: "中等失敗", large_failure: "大失敗",
+      };
+      const tier = (e.tier as string) ?? "";
+      const tierLabel = TIER_LABELS[tier] ?? tier;
+      const isMine = e.player_id === playerId;
+      const hint = (e.narrative_hint as string) ?? "";
+
+      if (!e.feasible) {
+        dispatch({ type: "APPEND_EVENT", event: {
+          ...event,
+          id: event.id ?? `dm-infeasible-${Date.now()}`,
+          message: `⚔ 行動不可行：${hint}`,
+        }});
+        return;
+      }
+
+      const rawRoll = (e.raw_roll as number) ?? 0;
+      const finalRoll = (e.final_roll as number) ?? 0;
+      const threshold = (e.threshold as number) ?? 0;
+      const whoPrefix = isMine ? "你的行動" : `${e.player_id} 的行動`;
+      const rollLine = `[${tierLabel}] 擲骰 ${rawRoll} + 屬性 = ${finalRoll}，門檻 ${threshold}`;
+      const rulingEventId = `dm-result-${Date.now()}`;
+
+      dispatch({ type: "APPEND_EVENT", event: {
+        id: rulingEventId,
+        event_type: "dm_ruling_applied",
+        timestamp: event.timestamp,
+        message: `${whoPrefix} — ${rollLine}\n${hint}`,
+      }});
+
+      // Refresh player HP/status after ruling
+      if (isMine) refreshPlayer();
+
+      // Async SLM render — upgrades narrative_hint to a full rendered narration
+      const key = getLlmKey();
+      if (key && hint) {
+        renderNarrative(event as unknown as DMRulingAppliedEvent, key).then(rendered => {
+          if (rendered && rendered !== hint) {
+            dispatch({ type: "UPDATE_EVENT", id: rulingEventId, updates: {
+              message: `${whoPrefix} — ${rollLine}\n\n${rendered}`,
+            }});
+          }
+        });
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerId]);
@@ -174,25 +246,77 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
   }
 
   async function handleSay(message: string) {
+    dispatch({ type: "APPEND_EVENT", event: {
+      id: `said-local-${Date.now()}`,
+      event_type: "player_said",
+      timestamp: Date.now() / 1000,
+      player_name: state.player?.name ?? playerId,
+      message,
+    }});
     try {
       await api.say(playerId, message);
     } catch { /* silent */ }
+
+    // NPC responses — each NPC in the room reacts asynchronously
+    const key = getLlmKey();
+    if (!key) return;
+    const aliveNpcs = (state.look?.npcs ?? [])
+      .filter(n => n.behavior_state !== "dead")
+      .slice(0, 3); // cap at 3 concurrent calls
+    const playerName = state.player?.name ?? playerId;
+    for (const npc of aliveNpcs) {
+      generateNpcResponse(npc.name, npc.npc_type ?? "monster", npc.behavior_state ?? "idle", playerName, message, key)
+        .then(line => {
+          if (!line) return;
+          api.npcSayResponse(npc.id, playerId, line).catch(() => {/* silent */});
+        });
+    }
   }
 
   async function handleDo(action: string) {
+    const key = getLlmKey();
+    if (!key) {
+      dispatch({ type: "APPEND_EVENT", event: {
+        id: `dm-nokey-${Date.now()}`,
+        event_type: "system_announcement",
+        timestamp: Date.now() / 1000,
+        message: "請先在登入頁設定 API Key 才能使用自由行動（/do）。",
+      }});
+      return;
+    }
+
+    const thinkingId = `dm-thinking-${Date.now()}`;
+    dispatch({ type: "APPEND_EVENT", event: {
+      id: thinkingId,
+      event_type: "system_announcement",
+      timestamp: Date.now() / 1000,
+      message: "⟳ DM 裁決中...",
+    }});
+
     try {
-      await api.doAction(playerId, action);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      dispatch({
-        type: "APPEND_EVENT",
-        event: {
-          id: `err-${Date.now()}`,
-          event_type: "system_announcement",
-          timestamp: Date.now() / 1000,
-          message: msg,
-        },
+      const result = await api.doAction(playerId, action);
+      if (!result.requires_ruling) {
+        // Chat / zero-cost path — server already broadcast the speech event
+        dispatch({ type: "UPDATE_EVENT", id: thinkingId, updates: { message: "" } });
+        // Remove the thinking placeholder entirely by zeroing the message (SSE player_said will show it)
+        return;
+      }
+      const { dm_packet } = result;
+      const ruling = await callDM(dm_packet, key);
+      await api.submitRuling({
+        nonce: dm_packet.nonce,
+        timestamp: dm_packet.timestamp,
+        session_id: dm_packet.session_id,
+        signature: dm_packet.signature,
+        ruling,
       });
+      // Result arrives via SSE dm_ruling_applied; remove the thinking placeholder
+      dispatch({ type: "UPDATE_EVENT", id: thinkingId, updates: { message: "✓ 裁決送出，等待結果..." } });
+    } catch (err) {
+      const msg = err instanceof DmTimeoutError
+        ? err.message
+        : err instanceof Error ? err.message : String(err);
+      dispatch({ type: "UPDATE_EVENT", id: thinkingId, updates: { message: `✗ ${msg}` } });
     }
   }
 
@@ -202,6 +326,30 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
       refreshLook();
       refreshPlayer();
     } catch { /* silent */ }
+  }
+
+  async function handleTalkToNpc(npcId: string, npcName: string, npcType: string) {
+    try {
+      const result = await api.talkToNpc(playerId, npcId);
+      setDialogueState({
+        npcId,
+        npcName: result.npc_name || npcName,
+        npcType: result.npc_type || npcType,
+        dialogue: result.dialogue,
+        opensShop: result.opens_shop,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      dispatch({
+        type: "APPEND_EVENT",
+        event: {
+          id: `err-${Date.now()}`,
+          event_type: "system_announcement",
+          timestamp: Date.now() / 1000,
+          message: `無法對話：${msg}`,
+        },
+      });
+    }
   }
 
   // ── Render ──
@@ -263,6 +411,7 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
                 items={look.items}
                 npcs={look.npcs}
                 onPickup={handlePickup}
+                onTalkToNpc={handleTalkToNpc}
                 disabled={isTraveling}
               />
               <EventLog events={events}/>
@@ -286,6 +435,32 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
         open={backpackOpen}
         onClose={() => setBackpackOpen(false)}
       />
+
+      {dialogueState && (
+        <DialogueModal
+          npcId={dialogueState.npcId}
+          npcName={dialogueState.npcName}
+          npcType={dialogueState.npcType}
+          dialogue={dialogueState.dialogue}
+          opensShop={dialogueState.opensShop}
+          onOpenShop={() => {
+            setShopState({ npcId: dialogueState.npcId, npcName: dialogueState.npcName });
+            setDialogueState(null);
+          }}
+          onClose={() => setDialogueState(null)}
+          onSay={handleSay}
+        />
+      )}
+
+      {shopState && (
+        <ShopPanel
+          playerId={player.id}
+          npcId={shopState.npcId}
+          npcName={shopState.npcName}
+          open={!!shopState}
+          onClose={() => setShopState(null)}
+        />
+      )}
     </>
   );
 }
