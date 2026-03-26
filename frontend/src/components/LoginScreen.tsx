@@ -166,7 +166,7 @@ export function LoginScreen({ onLogin }: Props) {
         </form>
 
         <p className="mt-4 text-center font-inter text-xs text-stone-600">
-          v0.1.0 · ArcaneForge MUD
+          v0.2.0-alpha · ArcaneForge MUD
         </p>
       </div>
     </div>

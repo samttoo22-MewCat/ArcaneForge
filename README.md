@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="ArcaneForge Logo" width="600"/>
+</p>
+
 # ArcaneForge AI MUD
 
 > 以 TRPG 精神為核心的多人文字冒險遊戲  
