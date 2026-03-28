@@ -8,6 +8,8 @@ interface Props {
   onDo: (action: string) => void;
   onLook: () => void;
   onBackpack: () => void;
+  onSkills: () => void;
+  onCraft: () => void;
   disabled: boolean;
 }
 
@@ -28,7 +30,7 @@ const CARD_DIRS: { dir: string; label: string; col: number; row: number }[] = [
   { dir: "out",   label: "出", col: 1, row: 3 },
 ];
 
-export function ActionBar({ exits, onMove, onSay, onDo, onLook, onBackpack, disabled }: Props) {
+export function ActionBar({ exits, onMove, onSay, onDo, onLook, onBackpack, onSkills, onCraft, disabled }: Props) {
   const [chatInput, setChatInput] = useState("");
   const [actionInput, setActionInput] = useState("");
   const [tab, setTab] = useState<"say" | "do">("say");
@@ -115,6 +117,32 @@ export function ActionBar({ exits, onMove, onSay, onDo, onLook, onBackpack, disa
           >
             <span>🎒</span>
             <span className="font-semibold">揹包</span>
+          </button>
+
+          {/* 技能按鈕 */}
+          <button
+            onClick={onSkills}
+            className="flex items-center gap-1.5 px-3 py-2 rounded border border-stone-700/40 bg-stone-900/60
+              font-inter text-sm text-stone-400
+              hover:border-violet-600/50 hover:bg-violet-900/20 hover:text-violet-300
+              cursor-pointer transition-all duration-150"
+            title="開啟技能面板"
+          >
+            <span>✦</span>
+            <span className="font-semibold">技能</span>
+          </button>
+
+          {/* 合成按鈕 */}
+          <button
+            onClick={onCraft}
+            className="flex items-center gap-1.5 px-3 py-2 rounded border border-stone-700/40 bg-stone-900/60
+              font-inter text-sm text-stone-400
+              hover:border-amber-600/50 hover:bg-amber-900/20 hover:text-amber-300
+              cursor-pointer transition-all duration-150"
+            title="開啟合成工坊"
+          >
+            <span>⚒</span>
+            <span className="font-semibold">合成</span>
           </button>
         </div>
 

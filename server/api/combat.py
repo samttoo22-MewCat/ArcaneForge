@@ -12,7 +12,7 @@ from server.db.repositories import player_repo, npc_repo, combat_repo, item_repo
 from server.dependencies import get_graph, get_redis, get_event_bus, get_batch_writer, get_item_master
 from server.engine import rules
 from server.engine.combat import Combatant, tick_to_ready, calculate_damage, apply_damage, check_double_action
-from server.engine.lifecycle import handle_player_death
+from server.engine.lifecycle import award_xp, handle_player_death
 from server.engine.state_machine import BattleStateMachine, BattleState
 
 router = APIRouter(prefix="/combat", tags=["combat"])
@@ -75,6 +75,18 @@ async def attack(
         ).to_dict()
         await bus.publish_room(place_id, event)
 
+        # Alert adjacent hostile NPCs in the same zone via global event system
+        from server.engine import global_events as _gevt
+        from server.db.repositories import place_repo as _pr
+        _place = await _pr.get_small_place(graph, place_id)
+        _middle_id = (_place or {}).get("parent_middle_id", "global")
+        _gevt.emit_nowait(_gevt.ServerEvent(
+            event_type="combat_started",
+            place_id=place_id,
+            middle_id=_middle_id,
+            data={"player_id": req.player_id},
+        ))
+
     # Calculate damage
     damage = calculate_damage(player.get("atk", 5), target.get("def_", 2), req.dm_modifier, is_combat=True)
     new_hp = max(0, target.get("hp", 1) - damage)
@@ -102,6 +114,8 @@ async def attack(
             await npc_repo.update_npc_hp(graph, req.target_id, 0)
             await npc_repo.update_npc(graph, req.target_id, {"behavior_state": "dead"})
             loot = await _drop_npc_loot(graph, target, place_id, item_master)
+            xp_reward = max(5, target.get("hp_max", 10) // 2 + target.get("atk", 5))
+            await award_xp(graph, bus, req.player_id, xp_reward)
         else:
             # Target is a player — trigger death flow
             await handle_player_death(

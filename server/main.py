@@ -4,7 +4,8 @@ import json
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from server.broadcast.event_bus import EventBus
 from server.config import settings
@@ -83,11 +84,12 @@ async def _npc_tick_loop(app: FastAPI) -> None:
     """Background task: process NPC behavior tree for all active rooms every tick."""
     from server.broadcast.event_types import (
         CombatRoundEvent,
+        NPCAlertEvent,
         NPCMovedEvent,
         StatusEffectAppliedEvent,
     )
     from server.db.repositories import npc_repo, player_repo
-    from server.engine import npc_ai
+    from server.engine import npc_ai, global_events
     from server.engine.combat import calculate_damage
     from server.engine.lifecycle import handle_player_death
     from server.engine.status_effects import (
@@ -106,10 +108,44 @@ async def _npc_tick_loop(app: FastAPI) -> None:
             redis = app.state.redis
 
             active_rooms = bus.active_room_ids
-            if not active_rooms:
+
+            # ── Process global server events (cross-zone NPC alerting) ──────
+            extra_alert_rooms: set[str] = set()
+            server_events = global_events.drain()
+            for sevt in server_events:
+                if sevt.event_type not in ("player_entered", "combat_started"):
+                    continue
+                hostile_npcs = await npc_repo.get_hostile_npcs_in_middle(graph, sevt.middle_id)
+                alerted_any = False
+                for npc in hostile_npcs:
+                    npc_room = npc.get("current_place_id", "")
+                    if npc_room == sevt.place_id:
+                        continue  # same room — handled normally by tick
+                    hostile_to = npc.get("hostile_to", [])
+                    if isinstance(hostile_to, str):
+                        import json as _json
+                        hostile_to = _json.loads(hostile_to)
+                    if "player" not in hostile_to:
+                        continue
+                    await npc_repo.update_npc(graph, npc["id"], {
+                        "behavior_state": "alert",
+                        "alert_ticks_remaining": 5,  # 10 s at 2 s/tick
+                    })
+                    extra_alert_rooms.add(npc_room)
+                    alerted_any = True
+                if alerted_any:
+                    await bus.publish_middle(sevt.middle_id, NPCAlertEvent(
+                        middle_id=sevt.middle_id,
+                        place_id=sevt.place_id,
+                        trigger=sevt.event_type,
+                        message="敵人察覺到入侵者的氣息！",
+                    ).to_dict())
+
+            rooms_to_process = active_rooms | extra_alert_rooms
+            if not rooms_to_process:
                 continue
 
-            for room_id in active_rooms:
+            for room_id in rooms_to_process:
                 npcs = await npc_repo.get_npcs_in_place(graph, room_id)
                 players = await player_repo.get_players_in_room(graph, room_id)
 
@@ -188,6 +224,12 @@ async def _npc_tick_loop(app: FastAPI) -> None:
 
                     if new_state != npc.get("behavior_state"):
                         await npc_repo.update_npc(graph, npc["id"], {"behavior_state": new_state})
+
+                    # ── Alert state: decrement timer, skip action ─────────────
+                    if new_state == "alert":
+                        remaining = max(0, npc.get("alert_ticks_remaining", 1) - 1)
+                        await npc_repo.update_npc(graph, npc["id"], {"alert_ticks_remaining": remaining})
+                        continue  # NPC is on guard but no players in room yet
 
                     # ── Patrol movement ───────────────────────────────────────
                     if new_state == "patrol":
@@ -409,15 +451,36 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    from server.api import health, player, combat, grab, dm, sse, npc
+    from server.api import health, player, combat, grab, dm, sse, npc, auth
 
     app.include_router(health.router)
+    app.include_router(auth.router, prefix="/api/v1")
     app.include_router(player.router, prefix="/api/v1")
     app.include_router(combat.router, prefix="/api/v1")
     app.include_router(grab.router, prefix="/api/v1")
     app.include_router(dm.router, prefix="/api/v1")
     app.include_router(npc.router, prefix="/api/v1")
     app.include_router(sse.router)
+
+    # ── Global 429 handler ────────────────────────────────────────────────────
+    from fastapi.exception_handlers import http_exception_handler
+    from fastapi.exceptions import HTTPException as FastAPIHTTPException
+
+    @app.exception_handler(FastAPIHTTPException)
+    async def _http_exception_handler(request: Request, exc: FastAPIHTTPException):
+        """Pass-through for all HTTP exceptions; adds Retry-After to 429 responses."""
+        response = await http_exception_handler(request, exc)
+        if exc.status_code == 429 and isinstance(exc.headers, dict):
+            retry_after = exc.headers.get("Retry-After", "60")
+            return JSONResponse(
+                status_code=429,
+                content={"detail": exc.detail},
+                headers={
+                    "Retry-After": retry_after,
+                    "Access-Control-Expose-Headers": "Retry-After",
+                },
+            )
+        return response
 
     # Print all registered routes on startup
     @app.on_event("startup")

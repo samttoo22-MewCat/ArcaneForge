@@ -1,21 +1,30 @@
 import { useState } from "react";
+import { buildAuthUrl } from "../auth/openrouter";
 
 interface Props {
   onLogin: (playerId: string, apiKey: string, remember: boolean) => void;
+  onOAuthClear?: () => void;
+  oauthApiKey?: string;
+  oauthPending?: boolean;
+  oauthError?: string | null;
 }
 
-export function LoginScreen({ onLogin }: Props) {
+export function LoginScreen({ onLogin, onOAuthClear, oauthApiKey, oauthPending, oauthError }: Props) {
   const [playerId, setPlayerId] = useState("");
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("arcaneforge_llm_key_raw") ?? "");
-  const [showKey, setShowKey] = useState(false);
   const [remember, setRemember] = useState(() => localStorage.getItem("arcaneforge_remember") === "1");
+  const [oauthLoading, setOauthLoading] = useState(false);
+
+  function handleOAuthLogin() {
+    setOauthLoading(true);
+    window.location.href = buildAuthUrl();
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const id = playerId.trim();
-    if (!id) return;
+    if (!id || !oauthApiKey) return;
     localStorage.setItem("arcaneforge_remember", remember ? "1" : "0");
-    onLogin(id, apiKey.trim(), remember);
+    onLogin(id, oauthApiKey, remember);
   }
 
   return (
@@ -80,50 +89,6 @@ export function LoginScreen({ onLogin }: Props) {
             />
           </div>
 
-          {/* OpenRouter API 金鑰 */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              {/* label 非標題，改 font-inter */}
-              <label className="font-inter text-sm font-semibold text-stone-400">
-                OpenRouter API 金鑰
-              </label>
-              <span className="font-inter text-xs text-stone-600">選項 · 用於 DM 袃裁</span>
-            </div>
-            <div className="relative">
-              <input
-                type={showKey ? "text" : "password"}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-or-v1-..."
-                className="w-full bg-stone-900 border border-stone-700 rounded px-4 py-3 pr-10
-                  text-stone-100 font-mono text-sm placeholder-stone-600
-                  focus:outline-none focus:border-forest/60 focus:ring-1 focus:ring-forest/30
-                  transition-colors"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300 cursor-pointer transition-colors"
-                aria-label={showKey ? "隱藏金鑰" : "顯示金鑰"}
-              >
-                {showKey ? (
-                  <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M2 8s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z"/>
-                    <path d="M3 3l10 10" strokeLinecap="round"/>
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M2 8s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z"/>
-                    <circle cx="8" cy="8" r="1.5"/>
-                  </svg>
-                )}
-              </button>
-            </div>
-            <p className="mt-1.5 font-inter text-xs text-stone-600 leading-relaxed">
-              在本機使用，用於驅動 AI GM 裁判。不會將金鑰傳輸到任何伺服器。
-            </p>
-          </div>
-
           {/* Remember me */}
           <label className="flex items-center gap-3 mb-5 cursor-pointer group select-none">
             <div className="relative w-4 h-4 shrink-0">
@@ -150,16 +115,54 @@ export function LoginScreen({ onLogin }: Props) {
             </span>
           </label>
 
-          {/* 進入按鈕 — 主要行動按鈕，保留大字體但改 font-inter（非展示標題）*/}
+          {/* OpenRouter OAuth — must authorize first */}
+          <div className="mt-5">
+            {oauthApiKey ? (
+              <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded bg-forest/10 border border-forest/40">
+                <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 text-forest-light" fill="currentColor">
+                  <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                </svg>
+                <span className="font-inter text-xs text-forest-light flex-1">OpenRouter 授權成功</span>
+                <button
+                  type="button"
+                  onClick={onOAuthClear}
+                  className="font-inter text-xs text-stone-500 hover:text-red-400 transition-colors"
+                >
+                  取消
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOAuthLogin}
+                disabled={oauthLoading || oauthPending}
+                className="w-full mb-4 py-3 font-inter text-base font-bold tracking-widest uppercase rounded cursor-pointer
+                  bg-stone-800 border border-stone-600 text-stone-200
+                  hover:bg-stone-700 hover:border-stone-500
+                  disabled:opacity-35 disabled:cursor-not-allowed
+                  transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                {(oauthLoading || oauthPending) && (
+                  <span className="inline-block w-4 h-4 border-2 border-stone-500 border-t-stone-200 rounded-full animate-spin"/>
+                )}
+                {oauthPending ? "驗證中..." : "使用 OpenRouter 帳號授權"}
+              </button>
+            )}
+
+            {oauthError && (
+              <p className="mb-4 font-inter text-xs text-red-400 text-center">{oauthError}</p>
+            )}
+          </div>
+
           <button
             type="submit"
-            disabled={!playerId.trim()}
+            disabled={!playerId.trim() || !oauthApiKey}
             className="w-full py-3 font-inter text-base font-bold tracking-widest uppercase rounded cursor-pointer
               bg-forest/20 border border-forest/60 text-forest-light
               hover:bg-forest/35 hover:border-forest/90
               disabled:opacity-35 disabled:cursor-not-allowed
               transition-all duration-200"
-            style={{ boxShadow: playerId.trim() ? "0 0 14px rgba(46,112,72,0.3)" : "none" }}
+            style={{ boxShadow: playerId.trim() && oauthApiKey ? "0 0 14px rgba(46,112,72,0.3)" : "none" }}
           >
             進入世界
           </button>

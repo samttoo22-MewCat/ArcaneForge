@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { api, getLlmKey, setLlmKey } from "./api";
+import { api, getLlmKey, setLlmKey, serverLog } from "./api";
+import { exchangeCodeForKey, cleanupOAuthState } from "./auth/openrouter";
 import { callDM, DmTimeoutError } from "./dm/caller";
-import { renderNarrative, generateNpcResponse } from "./dm/slm_renderer";
+import { renderNarrative, generateNpcResponse, compressRound, generateSummary } from "./dm/slm_renderer";
 import type { DMRulingAppliedEvent } from "./dm/schema";
 import { ActionBar } from "./components/ActionBar";
 import { EventLog } from "./components/EventLog";
@@ -14,6 +15,9 @@ import { useSSE } from "./hooks/useSSE";
 import { BackpackPanel } from "./components/BackpackPanel";
 import { DialogueModal } from "./components/DialogueModal";
 import { ShopPanel } from "./components/ShopPanel";
+import { SkillPanel } from "./components/SkillPanel";
+import { CraftPanel } from "./components/CraftPanel";
+import { CharacterCreationScreen } from "./components/CharacterCreationScreen";
 import type { GameEvent, GameState, LookResult, Player } from "./types";
 
 // ─── State / Reducer ──────────────────────────────────────────────────────────
@@ -70,6 +74,8 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [backpackOpen, setBackpackOpen] = useState(false);
+  const [skillPanelOpen, setSkillPanelOpen] = useState(false);
+  const [craftPanelOpen, setCraftPanelOpen] = useState(false);
   const [dialogueState, setDialogueState] = useState<{
     npcId: string; npcName: string; npcType: string;
     dialogue: string; opensShop: boolean;
@@ -80,14 +86,7 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
   // ── Data fetching ──
   async function refreshPlayer() {
     try {
-      let player = await api.getPlayer(playerId).catch(async (err: Error) => {
-        if (err.message.includes("404") || err.message.includes("Not Found")) {
-          // Auto-create player with default stats
-          await api.createPlayer(playerId);
-          return api.getPlayer(playerId);
-        }
-        throw err;
-      });
+      let player = await api.getPlayer(playerId);
       const raw = player as unknown as Record<string, unknown>;
       const p = {
         ...player,
@@ -130,9 +129,21 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
 
   // ── SSE ──
   const handleEvent = useCallback((event: GameEvent) => {
-    dispatch({ type: "APPEND_EVENT", event });
-
     const d = event as Record<string, unknown>;
+
+    // npc_dialogue: text is in `line`, not `message` — normalise before storing
+    if (event.event_type === "npc_dialogue") {
+      dispatch({ type: "APPEND_EVENT", event: {
+        ...event,
+        message: `${d.npc_name ?? "NPC"}：${d.line ?? ""}`,
+      }});
+      return;
+    }
+
+    // Skip own player_said via SSE — already added locally in handleSay
+    if (event.event_type === "player_said" && d.player_id === playerId) return;
+
+    dispatch({ type: "APPEND_EVENT", event });
 
     if (event.event_type === "player_traveling" && d.player_id === playerId) {
       dispatch({
@@ -146,7 +157,8 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
     if (event.event_type === "player_arrived" && d.player_id === playerId) {
       dispatch({ type: "UPDATE_TRAVEL", is_traveling: false });
       refreshPlayer();
-      refreshLook(true); // force=true: 抵達時一定要更新，不受 lookPending 阻擋
+      // 延遲 300ms 確保後端 DB 已提交新位置，再拉取新房間資料
+      setTimeout(() => refreshLook(true), 300);
     }
 
     // Refresh look when someone else moves into/out of our room
@@ -164,6 +176,11 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
     // Refresh look when an NPC moves into/out of our room
     if (event.event_type === "npc_moved") {
       refreshLook();
+    }
+
+    // Refresh player data on level-up
+    if (event.event_type === "player_leveled_up" && d.player_id === playerId) {
+      refreshPlayer();
     }
 
     // ── DM ruling applied ───────────────────────────────────────────────────
@@ -230,7 +247,7 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
     if (!state.player || state.player.is_traveling) return;
     try {
       await api.move(playerId, direction);
-      refreshLook(); // immediately show destination room during travel
+      // look 由 SSE player_arrived 事件觸發（延遲 300ms），不在此預先拉取
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       dispatch({
@@ -264,12 +281,50 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
       .filter(n => n.behavior_state !== "dead")
       .slice(0, 3); // cap at 3 concurrent calls
     const playerName = state.player?.name ?? playerId;
+    serverLog(`[say] key=${key.slice(0,8)}... aliveNpcs=${aliveNpcs.map(n=>n.name).join(",") || "(none)"}`);
+
     for (const npc of aliveNpcs) {
-      generateNpcResponse(npc.name, npc.npc_type ?? "monster", npc.behavior_state ?? "idle", playerName, message, key)
-        .then(line => {
-          if (!line) return;
-          api.npcSayResponse(npc.id, playerId, line).catch(() => {/* silent */});
+      // Fire-and-forget: fetch memory → generate response → compress → store
+      (async () => {
+        // 1. Fetch memory context (silent fail → empty context)
+        const memory = await api.getNpcMemory(npc.id, playerId).catch(() => ({
+          summary: "", recent_rounds: [], attitude: 0, interaction_count: 0, tags: [],
+        }));
+
+        // 2. Generate NPC response with memory
+        serverLog(`[say] calling generateNpcResponse for ${npc.name}`);
+        const line = await generateNpcResponse(
+          npc.name, npc.npc_type ?? "monster", npc.behavior_state ?? "idle",
+          playerName, message, key, memory,
+        );
+        if (!line) {
+          serverLog(`[say] generateNpcResponse(${npc.name}) => null (LLM failed)`, "error");
+          return;
+        }
+        serverLog(`[say] generateNpcResponse(${npc.name}) => OK (${line.length} chars)`);
+
+        // 3. Broadcast NPC line to room
+        const sayRes = await api.npcSayResponse(npc.id, playerId, line).catch((e: unknown) => {
+          serverLog(`[say] npcSayResponse error for ${npc.name}: ${e}`, "error");
+          return null;
         });
+        serverLog(`[say] npcSayResponse(${npc.name}) => ${sayRes ? "OK" : "failed"}`);
+
+        // 4. Compress the exchange and store (background, non-blocking)
+        compressRound(npc.name, playerName, message, line, key).then(async compressed => {
+          const result = await api.addNpcRound(npc.id, playerId, compressed).catch(
+            () => ({ overflow: false, rounds_for_summary: [] })
+          );
+
+          // 5. If overflow: generate new long-term summary
+          if (result.overflow && result.rounds_for_summary.length > 0) {
+            const newSummary = await generateSummary(
+              result.rounds_for_summary, memory.summary, npc.name, key,
+            );
+            await api.updateNpcSummary(npc.id, playerId, newSummary).catch(() => {});
+          }
+        });
+      })();
     }
   }
 
@@ -326,6 +381,48 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
       refreshLook();
       refreshPlayer();
     } catch { /* silent */ }
+  }
+
+  async function handleAllocateStat(stat: string) {
+    try {
+      await api.allocateStat(playerId, stat);
+      refreshPlayer();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      dispatch({
+        type: "APPEND_EVENT",
+        event: {
+          id: `err-${Date.now()}`,
+          event_type: "system_announcement",
+          timestamp: Date.now() / 1000,
+          message: `屬性分配失敗：${msg}`,
+        },
+      });
+    }
+  }
+
+  async function handleNpcPersuade(npcId: string, message: string, intent: string) {
+    const key = getLlmKey();
+    if (!key) throw new Error("未設定 LLM API 金鑰，無法進行 DM 裁決。");
+
+    // 1. Broadcast player message to room
+    await api.say(playerId, message).catch(() => {});
+
+    // 2. Get signed DM packet
+    const { dm_packet } = await api.getNpcPersuasionPacket(npcId, playerId, message, intent);
+
+    // 3. Call DM LLM
+    const ruling = await callDM(dm_packet, key);
+
+    // 4. Submit result — server validates, updates disposition, broadcasts NPCPersuasionEvent
+    await api.submitNpcPersuasionResult(npcId, {
+      player_id: playerId,
+      nonce: dm_packet.nonce,
+      timestamp: dm_packet.timestamp,
+      session_id: dm_packet.session_id,
+      signature: dm_packet.signature,
+      ruling,
+    });
   }
 
   async function handleTalkToNpc(npcId: string, npcName: string, npcType: string) {
@@ -401,7 +498,7 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
         <Header player={player} connected={connected} onLogout={onLogout}/>
 
         <div className="flex flex-1 min-h-0">
-          <StatsPanel player={player}/>
+          <StatsPanel player={player} onAllocateStat={handleAllocateStat}/>
 
           <div className="flex flex-col flex-1 min-w-0">
             {/* 上方：地圖 + 房間物品/在場者 + 事件日誌 並排 */}
@@ -424,6 +521,8 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
               onDo={handleDo}
               onLook={refreshLook}
               onBackpack={() => setBackpackOpen(true)}
+              onSkills={() => setSkillPanelOpen(true)}
+              onCraft={() => setCraftPanelOpen(true)}
               disabled={isTraveling}
             />
           </div>
@@ -434,6 +533,22 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
         playerId={player.id}
         open={backpackOpen}
         onClose={() => setBackpackOpen(false)}
+      />
+
+      <SkillPanel
+        playerId={player.id}
+        open={skillPanelOpen}
+        onClose={() => setSkillPanelOpen(false)}
+        currentNpcs={state.look?.npcs ?? []}
+        playerMp={state.player?.mp ?? 0}
+        onSkillUsed={refreshPlayer}
+      />
+
+      <CraftPanel
+        playerId={player.id}
+        open={craftPanelOpen}
+        onClose={() => setCraftPanelOpen(false)}
+        onCrafted={refreshPlayer}
       />
 
       {dialogueState && (
@@ -449,6 +564,7 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
           }}
           onClose={() => setDialogueState(null)}
           onSay={handleSay}
+          onPersuade={(message, intent) => handleNpcPersuade(dialogueState.npcId, message, intent)}
         />
       )}
 
@@ -467,6 +583,8 @@ function GameHUD({ playerId, onLogout }: { playerId: string; onLogout: () => voi
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
+type Screen = "login" | "creating" | "game";
+
 export default function App() {
   // Player ID: check localStorage first, then sessionStorage.
   // JSON.parse handles old entries that were stored with JSON.stringify (e.g. `"mewcat"` → `mewcat`).
@@ -474,6 +592,11 @@ export default function App() {
     const raw = localStorage.getItem("arcaneforge_player") ?? sessionStorage.getItem("arcaneforge_player_session");
     if (!raw) return null;
     try { const p = JSON.parse(raw); return typeof p === "string" ? p : raw; } catch { return raw; }
+  });
+  // During OAuth callback (?code=...), always show login — don't mount GameHUD / SSE yet
+  const [screen, setScreen] = useState<Screen>(() => {
+    if (new URLSearchParams(window.location.search).has("code")) return "login";
+    return playerId ? "game" : "login";
   });
 
   // API key always lives in localStorage (not sensitive enough to clear on tab close)
@@ -483,7 +606,32 @@ export default function App() {
     if (apiKey) setLlmKey(apiKey);
   }, [apiKey]);
 
-  function handleLogin(id: string, key: string, remember: boolean) {
+  const [oauthPending, setOauthPending] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const oauthExchangedRef = useRef(false);
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (!code) return;
+    if (oauthExchangedRef.current) return; // prevent StrictMode double-invoke
+    oauthExchangedRef.current = true;
+    setOauthPending(true);
+    setOauthError(null);
+    exchangeCodeForKey(code)
+      .then((key) => {
+        cleanupOAuthState();
+        setApiKey(key);
+        setLlmKey(key);
+      })
+      .catch((err) => {
+        cleanupOAuthState();
+        oauthExchangedRef.current = false; // allow retry on error
+        setOauthError(err instanceof Error ? err.message : "OAuth 授權失敗");
+      })
+      .finally(() => setOauthPending(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleLogin(id: string, key: string, remember: boolean) {
     if (remember) {
       localStorage.setItem("arcaneforge_player", id);
       sessionStorage.removeItem("arcaneforge_player_session");
@@ -494,19 +642,55 @@ export default function App() {
     setPlayerId(id);
     setApiKey(key);
     setLlmKey(key);
+
+    // Check if player already exists
+    try {
+      await api.getPlayer(id);
+      setScreen("game");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("404") || msg.includes("Not Found")) {
+        setScreen("creating");
+      } else {
+        // Network/server error — still go to game, GameHUD will show the error
+        setScreen("game");
+      }
+    }
+  }
+
+  function handleCharacterCreated() {
+    setScreen("game");
+  }
+
+  function handleBack() {
+    localStorage.removeItem("arcaneforge_player");
+    sessionStorage.removeItem("arcaneforge_player_session");
+    setPlayerId(null);
+    setScreen("login");
   }
 
   function handleLogout() {
     localStorage.removeItem("arcaneforge_player");
     sessionStorage.removeItem("arcaneforge_player_session");
     setPlayerId(null);
+    setScreen("login");
   }
 
-  if (!playerId) {
-    return <LoginScreen onLogin={handleLogin}/>;
+  if (screen === "login") {
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        onOAuthClear={() => { setApiKey(""); setLlmKey(""); localStorage.removeItem("arcaneforge_llm_key"); oauthExchangedRef.current = false; }}
+        oauthApiKey={apiKey}
+        oauthPending={oauthPending}
+        oauthError={oauthError}
+      />
+    );
   }
-
-  return <GameHUD playerId={playerId} onLogout={handleLogout}/>;
+  if (screen === "creating" && playerId) {
+    return <CharacterCreationScreen playerId={playerId} onCreated={handleCharacterCreated} onBack={handleBack}/>;
+  }
+  return <GameHUD playerId={playerId!} onLogout={handleLogout}/>;
 }
 
 

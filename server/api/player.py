@@ -1,8 +1,12 @@
 """Player action endpoints: /move, /look, /say, /do, /pickup."""
 import asyncio
+import json
 import math
 import time
 import uuid
+from pathlib import Path
+
+_CLASSES: dict = json.loads((Path(__file__).parent.parent.parent / "data" / "classes.json").read_text())
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -11,6 +15,7 @@ from server.broadcast.event_bus import EventBus
 from server.broadcast.event_types import (
     PlayerTravelingEvent, PlayerArrivedEvent,
     PlayerSaidEvent, WorldStateChangeEvent,
+    CombatRoundEvent, StatusEffectAppliedEvent,
 )
 from server.db import optimistic_lock
 from server.db.batch_writer import BatchWriter, WriteOperation
@@ -18,7 +23,10 @@ from server.db.repositories import item_repo, npc_repo, place_repo, player_repo
 from server.dependencies import get_batch_writer, get_event_bus, get_graph, get_item_master, get_redis
 from server.dm import nonce_store, prompt_builder, signer
 from server.dm.validator import RulingContext, validate_ruling
-from server.engine import npc_ai, rules
+from server.engine import npc_ai, rules, player_skills
+from server.engine.lifecycle import award_xp, _load_levels
+from server.engine.rate_limiter import rate_limit
+from server.engine.status_effects import make_effect
 
 router = APIRouter(prefix="/player", tags=["player"])
 
@@ -72,6 +80,7 @@ class PickupRequest(BaseModel):
 class CreatePlayerRequest(BaseModel):
     player_id: str
     name: str | None = None
+    class_id: str | None = None
 
 
 DEFAULT_SPAWN = "room_town_square"
@@ -95,11 +104,18 @@ async def create_player(req: CreatePlayerRequest, graph=Depends(get_graph)):
 
     # Find first available small_place as spawn (fall back to hardcoded default)
     spawn_id = DEFAULT_SPAWN
+    stats = {**DEFAULT_STATS}
+    if req.class_id and req.class_id in _CLASSES:
+        cls = _CLASSES[req.class_id]
+        stats["classes"] = [req.class_id]
+        for stat in cls.get("primary_stats", []):
+            if stat in stats:
+                stats[stat] += 3
     props = {
         "id": req.player_id,
         "name": req.name or req.player_id,
         "current_place_id": spawn_id,
-        **DEFAULT_STATS,
+        **stats,
     }
     await player_repo.create_player(graph, props)
 
@@ -120,6 +136,7 @@ async def move_player(
     redis=Depends(get_redis),
     bus: EventBus = Depends(get_event_bus),
     writer: BatchWriter = Depends(get_batch_writer),
+    _rl: None = Depends(rate_limit("move")),
 ):
     player = await player_repo.get_player(graph, req.player_id)
     if not player:
@@ -168,7 +185,6 @@ async def move_player(
             graph=graph,
             redis=redis,
             bus=bus,
-            writer=writer,
             player_id=req.player_id,
             player_name=player.get("name", req.player_id),
             old_place_id=old_place_id,
@@ -193,7 +209,6 @@ async def _arrive(
     graph,
     redis,
     bus: EventBus,
-    writer: BatchWriter,
     player_id: str,
     player_name: str,
     old_place_id: str,
@@ -212,14 +227,10 @@ async def _arrive(
 
     # Update position and clear travel state
     await optimistic_lock.add_player_to_room(graph, new_place_id, player_id)
+    # 必須立即更新 current_place_id（直接寫 DB），不能用 BatchWriter 的非同步佇列，
+    # 否則廣播 player_arrived 後前端 /look 可能仍讀到舊位置
+    await player_repo.update_player_location(graph, player_id, new_place_id)
     await player_repo.set_travel_state(graph, player_id, False, None, None)
-    writer.enqueue(WriteOperation("player", "id", {
-        "id": player_id,
-        "current_place_id": new_place_id,
-        "is_traveling": False,
-        "travel_destination_id": None,
-        "travel_arrives_at": None,
-    }))
 
     # Wake hibernating NPCs in the new room and run delayed simulation
     hibernated = await npc_repo.wake_npcs_in_place(graph, new_place_id)
@@ -234,6 +245,15 @@ async def _arrive(
     new_place = await place_repo.get_small_place(graph, new_place_id)
     new_middle_id = (new_place or {}).get("parent_middle_id", "global")
     await bus.move_player(player_id, new_place_id, new_middle_id)
+
+    # Notify global event system so adjacent hostile NPCs in the same zone get alerted
+    from server.engine import global_events as _gevt
+    _gevt.emit_nowait(_gevt.ServerEvent(
+        event_type="player_entered",
+        place_id=new_place_id,
+        middle_id=new_middle_id,
+        data={"player_id": player_id},
+    ))
 
     arrived_event = PlayerArrivedEvent(
         player_id=player_id,
@@ -318,7 +338,7 @@ async def look(
     return {
         "place": place,
         "exits": exits,
-        "npcs": [{"id": n["id"], "name": n["name"], "behavior_state": n.get("behavior_state")} for n in npcs],
+        "npcs": [{"id": n["id"], "name": n["name"], "npc_type": n.get("npc_type", ""), "behavior_state": n.get("behavior_state")} for n in npcs],
         "items": [
             {
                 "instance_id": i["instance_id"],
@@ -344,6 +364,7 @@ async def say(
     req: SayRequest,
     graph=Depends(get_graph),
     bus: EventBus = Depends(get_event_bus),
+    _rl: None = Depends(rate_limit("say")),
 ):
     player = await player_repo.get_player(graph, req.player_id)
     if not player:
@@ -366,6 +387,7 @@ async def do_action(
     redis=Depends(get_redis),
     item_master: dict = Depends(get_item_master),
     bus: EventBus = Depends(get_event_bus),
+    _rl: None = Depends(rate_limit("do")),
 ):
     """Step 1 of DM ruling flow: build and return signed prompt packet."""
     player = await player_repo.get_player(graph, req.player_id)
@@ -437,6 +459,7 @@ async def pickup(
     graph=Depends(get_graph),
     bus: EventBus = Depends(get_event_bus),
     writer: BatchWriter = Depends(get_batch_writer),
+    _rl: None = Depends(rate_limit("pickup")),
 ):
     player = await player_repo.get_player(graph, req.player_id)
     if not player:
@@ -482,6 +505,48 @@ async def get_inventory(
     return {"items": result}
 
 
+@router.get("/{player_id}/craftable")
+async def get_craftable_items(
+    player_id: str,
+    graph=Depends(get_graph),
+    item_master: dict = Depends(get_item_master),
+):
+    """Return all craftable items enriched with per-ingredient availability."""
+    player = await player_repo.get_player(graph, player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+
+    result = []
+    for item_id, master in item_master.items():
+        if not master.get("is_craftable"):
+            continue
+        recipe: dict = master.get("craft_recipe") or {}
+        ingredients = []
+        can_craft = True
+        for ing_id, needed in recipe.items():
+            instances = await item_repo.get_player_inventory_by_item_id(graph, player_id, ing_id)
+            have = sum(i.get("quantity", 1) for i in instances)
+            ing_name = item_master.get(ing_id, {}).get("name", ing_id)
+            if have < needed:
+                can_craft = False
+            ingredients.append({
+                "item_id": ing_id,
+                "name": ing_name,
+                "needed": needed,
+                "have": have,
+                "sufficient": have >= needed,
+            })
+        result.append({
+            "item_id": item_id,
+            "name": master.get("name", item_id),
+            "description": master.get("description", ""),
+            "category": master.get("category", ""),
+            "can_craft": can_craft,
+            "ingredients": ingredients,
+        })
+    return {"craftable": result}
+
+
 class CraftRequest(BaseModel):
     player_id: str
     item_id: str  # must have is_craftable: true in item master
@@ -493,6 +558,7 @@ async def craft(
     graph=Depends(get_graph),
     bus: EventBus = Depends(get_event_bus),
     item_master: dict = Depends(get_item_master),
+    _rl: None = Depends(rate_limit("craft")),
 ):
     master = item_master.get(req.item_id)
     if not master or not master.get("is_craftable"):
@@ -562,6 +628,7 @@ async def buy_item(
     req: BuyRequest,
     graph=Depends(get_graph),
     item_master: dict = Depends(get_item_master),
+    _rl: None = Depends(rate_limit("buy")),
 ):
     import json as _json
 
@@ -624,6 +691,7 @@ async def sell_item(
     req: SellRequest,
     graph=Depends(get_graph),
     item_master: dict = Depends(get_item_master),
+    _rl: None = Depends(rate_limit("sell")),
 ):
     player = await player_repo.get_player(graph, req.player_id)
     if not player:
@@ -670,10 +738,241 @@ async def sell_item(
     return {"success": True, "sold_instance_id": req.item_instance_id, "received_coins": sell_price}
 
 
+class UseSkillRequest(BaseModel):
+    player_id: str
+    ability_id: str
+    ability_type: str = "skill"  # "skill" | "spell"
+    target_id: str | None = None
+
+
+@router.get("/{player_id}/abilities")
+async def get_player_abilities(
+    player_id: str,
+    graph=Depends(get_graph),
+    redis=Depends(get_redis),
+):
+    """Return all skills/spells with unlock status and cooldown info for this player."""
+    player = await player_repo.get_player(graph, player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+
+    all_ids = list(player_skills.load_skills().keys()) + list(player_skills.load_spells().keys())
+    cooldowns: dict[str, float] = {}
+    for ability_id in all_ids:
+        raw = await redis.get(player_skills.get_cooldown_key(player_id, ability_id))
+        if raw is not None:
+            try:
+                expires_at = float(raw)
+                cooldowns[ability_id] = player_skills.get_cooldown_remaining(expires_at)
+            except (ValueError, TypeError):
+                pass
+
+    return {"abilities": player_skills.build_abilities_list(player, cooldowns)}
+
+
+@router.post("/use_skill")
+async def use_skill(
+    req: UseSkillRequest,
+    graph=Depends(get_graph),
+    redis=Depends(get_redis),
+    bus: EventBus = Depends(get_event_bus),
+    _rl: None = Depends(rate_limit("use_skill")),
+):
+    """Use a skill or spell. Validates unlock, MP, and cooldown; applies effect."""
+    player = await player_repo.get_player(graph, req.player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+
+    # Load ability definition
+    if req.ability_type == "spell":
+        ability_dict = player_skills.load_spells()
+    else:
+        ability_dict = player_skills.load_skills()
+    ability = ability_dict.get(req.ability_id)
+    if not ability:
+        raise HTTPException(400, f"技能/法術「{req.ability_id}」不存在。")
+
+    # Unlock check
+    unlocked, locked_reason = player_skills.check_ability_unlocked(player, ability)
+    if not unlocked:
+        raise HTTPException(400, locked_reason)
+
+    # Passive guard
+    if ability.get("effect_type") == "passive":
+        raise HTTPException(400, "被動技能自動生效，無法主動使用。")
+
+    # MP check
+    mp_cost: int = ability.get("mp_cost", 0)
+    if player.get("mp", 0) < mp_cost:
+        raise HTTPException(400, f"魔力不足。需要 {mp_cost} MP，目前只有 {player.get('mp', 0)} MP。")
+
+    # Cooldown check
+    cd_key = player_skills.get_cooldown_key(req.player_id, req.ability_id)
+    raw_cd = await redis.get(cd_key)
+    if raw_cd is not None:
+        try:
+            remaining = player_skills.get_cooldown_remaining(float(raw_cd))
+            if remaining > 0:
+                raise HTTPException(400, f"技能冷卻中，還需 {remaining:.1f} 秒。")
+        except (ValueError, TypeError):
+            pass
+
+    # Target resolution
+    target: dict | None = None
+    if req.target_id:
+        target = await npc_repo.get_npc(graph, req.target_id)
+        if not target:
+            raise HTTPException(400, "目標 NPC 不存在。")
+        if target.get("current_place_id") != player.get("current_place_id"):
+            raise HTTPException(400, "目標不在同一個地點。")
+
+    # Resolve effect
+    try:
+        result = player_skills.resolve_ability_effect(player, ability, target, req.ability_type)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    damage: int = result["damage"]
+    heal: int = result["heal"]
+    status_applied: str | None = result["status_applied"]
+    narrative_hint: str = result["narrative_hint"]
+
+    # Deduct MP
+    new_mp = max(0, player.get("mp", 0) - mp_cost)
+    await player_repo.update_player(graph, req.player_id, {"mp": new_mp})
+
+    # Set cooldown in Redis
+    cd_turns: int = ability.get("cooldown_turns", 0)
+    if cd_turns > 0:
+        cd_seconds = cd_turns * 2.0
+        await redis.set(cd_key, str(time.time() + cd_seconds), ex=int(cd_seconds) + 5)
+
+    # Apply heal to player
+    if heal > 0:
+        new_hp = min(player.get("max_hp", 100), player.get("hp", 100) + heal)
+        await player_repo.update_player(graph, req.player_id, {"hp": new_hp})
+
+    # Apply damage / status to target NPC
+    new_target_hp: int | None = None
+    target_defeated = False
+    if target and damage > 0:
+        new_target_hp = max(0, target.get("hp", 1) - damage)
+        await npc_repo.update_npc_hp(graph, req.target_id, new_target_hp)
+        if new_target_hp == 0:
+            await npc_repo.update_npc(graph, req.target_id, {"behavior_state": "dead"})
+            target_defeated = True
+            xp_reward = max(5, target.get("hp_max", 10) // 2 + target.get("atk", 5))
+            await award_xp(graph, bus, req.player_id, xp_reward)
+
+    if target and status_applied:
+        try:
+            new_effect = make_effect(status_applied, source_id=req.player_id)
+            target_fx_raw = target.get("status_effects", "[]") or "[]"
+            if isinstance(target_fx_raw, list):
+                target_fx = target_fx_raw
+            else:
+                try:
+                    target_fx = json.loads(target_fx_raw)
+                except (json.JSONDecodeError, ValueError):
+                    target_fx = []
+            existing = next((e for e in target_fx if e.get("effect_type") == status_applied), None)
+            if existing:
+                existing["stacks"] = min(existing.get("stacks", 1) + 1, 5)
+                existing["duration"] = max(existing["duration"], new_effect.duration)
+            else:
+                target_fx.append({
+                    "effect_type": new_effect.effect_type.value,
+                    "duration": new_effect.duration,
+                    "stacks": new_effect.stacks,
+                    "source_id": new_effect.source_id,
+                })
+            await npc_repo.update_npc(graph, req.target_id, {"status_effects": json.dumps(target_fx)})
+            room_id = player.get("current_place_id", "")
+            await bus.publish_room(room_id, StatusEffectAppliedEvent(
+                target_id=req.target_id,
+                target_name=target.get("name", req.target_id),
+                effect_type=status_applied,
+                stacks=new_effect.stacks,
+                source_id=req.player_id,
+                room_id=room_id,
+            ).to_dict())
+        except (ValueError, KeyError):
+            pass  # Unknown effect type, skip
+
+    # Broadcast combat round event
+    room_id = player.get("current_place_id", "")
+    await bus.publish_room(room_id, CombatRoundEvent(
+        room_id=room_id,
+        actor_id=req.player_id,
+        target_id=req.target_id or "",
+        action=ability.get("name", req.ability_id),
+        damage=damage,
+        target_hp_remaining=new_target_hp if new_target_hp is not None else 0,
+        status_applied=status_applied,
+        narrative_hint=narrative_hint,
+    ).to_dict())
+
+    return {
+        "success": True,
+        "ability_id": req.ability_id,
+        "ability_name": ability.get("name", req.ability_id),
+        "mp_remaining": new_mp,
+        "damage": damage,
+        "heal": heal,
+        "status_applied": status_applied,
+        "narrative_hint": narrative_hint,
+        "target_hp_remaining": new_target_hp,
+        "target_defeated": target_defeated,
+    }
+
+
+_VALID_STATS = {"str", "dex", "int", "wis", "cha", "luk"}
+
+
+class AllocateStatRequest(BaseModel):
+    player_id: str
+    stat: str  # "str" | "dex" | "int" | "wis" | "cha" | "luk"
+
+
+@router.post("/allocate_stat")
+async def allocate_stat(
+    req: AllocateStatRequest,
+    graph=Depends(get_graph),
+    _rl: None = Depends(rate_limit("allocate_stat")),
+):
+    """Spend one unallocated stat point to raise a core attribute by 1."""
+    if req.stat not in _VALID_STATS:
+        raise HTTPException(400, f"無效屬性：{req.stat}。有效值：{', '.join(sorted(_VALID_STATS))}")
+
+    player = await player_repo.get_player(graph, req.player_id)
+    if not player:
+        raise HTTPException(404, "Player not found")
+
+    if (player.get("stat_points") or 0) <= 0:
+        raise HTTPException(400, "沒有可分配的屬性點數。")
+
+    new_val = (player.get(req.stat) or 8) + 1
+    updates: dict = {req.stat: new_val, "stat_points": (player.get("stat_points") or 0) - 1}
+
+    # Update derived combat stats when relevant core attributes change
+    if req.stat == "str":
+        updates["atk"] = (player.get("atk") or 10) + 1
+    elif req.stat == "dex":
+        updates["spd"] = (player.get("spd") or 10) + 1
+
+    await player_repo.update_player(graph, req.player_id, updates)
+    return {"success": True, "stat": req.stat, "new_value": new_val, "stat_points": updates["stat_points"]}
+
+
 # ── Must be LAST — wildcard catches any GET /player/{id} not matched above ──
 @router.get("/{player_id}")
 async def get_player(player_id: str, graph=Depends(get_graph)):
     player = await player_repo.get_player(graph, player_id)
     if not player:
         raise HTTPException(404, "Player not found")
+    levels = _load_levels()
+    xp_table: list[int] = levels["xp_table"]
+    max_level: int = levels["max_level"]
+    current_level: int = player.get("level", 1)
+    player["xp_next_level"] = xp_table[current_level] if current_level < max_level else None
     return player

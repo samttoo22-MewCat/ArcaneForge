@@ -16,6 +16,9 @@ const EVENT_COLOR: Record<string, string> = {
   system_announcement: "#9A907E",
   grab_contest_open: "#C040C0",
   grab_contest_resolved: "#C040C0",
+  player_leveled_up: "#D4A017",
+  npc_alert: "#D97706",
+  npc_persuasion: "#C040C0",
 };
 
 const EVENT_PREFIX: Record<string, string> = {
@@ -33,6 +36,9 @@ const EVENT_PREFIX: Record<string, string> = {
   system_announcement: "◉",
   grab_contest_open: "◈",
   grab_contest_resolved: "◈",
+  player_leveled_up: "⬆",
+  npc_alert: "⚠",
+  npc_persuasion: "◈",
 };
 
 const DIR_ZH: Record<string, string> = {
@@ -97,6 +103,20 @@ function formatEvent(event: GameEvent): string {
       return `${d.npc_name} 離開了此地，前往他處。`;
     case "status_effect_applied":
       return `${d.target_name} 受到了【${d.effect_type}】效果！（${d.stacks} 層）`;
+    case "player_leveled_up":
+      return `${d.player_name} 升至 Lv.${d.new_level}！獲得 ${d.stat_points_gained ?? 3} 屬性點可分配。`;
+    case "npc_alert":
+      return String(d.message ?? "敵人察覺到入侵者的氣息！");
+    case "npc_persuasion": {
+      const intentZh: Record<string, string> = { persuade: "說服", threaten: "威脅", bribe: "賄賂" };
+      const tierZh: Record<string, string> = {
+        large_success: "大成功", medium_success: "成功", small_success: "小成功",
+        small_failure: "小失敗", medium_failure: "失敗", large_failure: "大失敗",
+      };
+      const intentStr = intentZh[d.intent as string] ?? String(d.intent ?? "互動");
+      const tierStr = tierZh[d.tier as string] ? `【${tierZh[d.tier as string]}】` : "";
+      return `${d.player_name} 嘗試${intentStr} ${d.npc_name}${tierStr}：${d.narrative ?? ""}`;
+    }
     default:
       return JSON.stringify(event);
   }
@@ -141,7 +161,14 @@ export function EventLog({ events }: { events: GameEvent[] }) {
           </p>
         )}
         {events.map((event) => {
-          const color = EVENT_COLOR[event.event_type] ?? "#9A907E";
+          const d = event as Record<string, unknown>;
+          const PERSUASION_TIER_COLOR: Record<string, string> = {
+            large_success: "#40C080", medium_success: "#60A870", small_success: "#8AAA60",
+            small_failure: "#9A9070", medium_failure: "#C86840", large_failure: "#E84040",
+          };
+          const color = event.event_type === "npc_persuasion"
+            ? (PERSUASION_TIER_COLOR[d.tier as string] ?? "#C040C0")
+            : (EVENT_COLOR[event.event_type] ?? "#9A907E");
           const prefix = EVENT_PREFIX[event.event_type] ?? "·";
           const text = formatEvent(event);
           return (

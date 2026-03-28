@@ -3,6 +3,7 @@ import type { Player } from "../types";
 
 interface Props {
   player: Player;
+  onAllocateStat?: (stat: string) => void;
 }
 
 // 方向中文對照
@@ -51,9 +52,9 @@ const STAT_TOOLTIPS: Record<string, string> = {
 };
 
 function StatRow({
-  label, value, tooltip,
+  label, value, tooltip, onAllocate,
 }: {
-  label: string; value: number | string; tooltip?: string;
+  label: string; value: number | string; tooltip?: string; onAllocate?: () => void;
 }) {
   const [show, setShow] = useState(false);
   return (
@@ -63,7 +64,16 @@ function StatRow({
       onMouseLeave={() => setShow(false)}
     >
       <span className="font-inter text-sm font-semibold text-stone-500">{label}</span>
-      <span className="font-mono text-2xl font-bold text-stone-100">{value}</span>
+      <div className="flex items-center gap-2">
+        {onAllocate && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onAllocate(); }}
+            className="w-5 h-5 rounded-full border border-amber-500/70 bg-amber-500/15 text-amber-400 text-xs font-bold flex items-center justify-center hover:bg-amber-500/30 transition-colors"
+            title="分配屬性點"
+          >+</button>
+        )}
+        <span className="font-mono text-2xl font-bold text-stone-100">{value}</span>
+      </div>
       {tooltip && show && (
         <div className="absolute left-0 bottom-full mb-2 z-50 w-52 rounded-lg border border-forest/40 bg-stone-950/95 px-3 py-2 shadow-xl pointer-events-none">
           <p className="font-inter text-xs leading-relaxed text-stone-300">{tooltip}</p>
@@ -75,7 +85,8 @@ function StatRow({
   );
 }
 
-export function StatsPanel({ player }: Props) {
+export function StatsPanel({ player, onAllocateStat }: Props) {
+  const hasPoints = (player.stat_points ?? 0) > 0;
   return (
     <aside className="flex flex-col gap-5 p-5 bg-stone-950/70 border-r border-stone-700/40 w-64 shrink-0 overflow-y-auto"
       style={{ borderColor: "rgba(37,46,62,0.7)" }}>
@@ -105,6 +116,27 @@ export function StatsPanel({ player }: Props) {
             ? player.classes.join(" · ")
             : "冒險者"}
         </p>
+        {/* XP 進度條 */}
+        {player.xp_next_level != null ? (
+          <div className="w-full mt-2 px-1">
+            <div className="flex justify-between text-xs font-mono text-stone-500 mb-1">
+              <span>XP</span>
+              <span>{player.xp ?? 0} / {player.xp_next_level}</span>
+            </div>
+            <div className="h-2 bg-stone-800/80 rounded overflow-hidden border border-stone-700/40">
+              <div
+                className="h-full rounded transition-all duration-700"
+                style={{
+                  width: `${Math.min(100, ((player.xp ?? 0) / player.xp_next_level) * 100)}%`,
+                  background: "linear-gradient(90deg, #92400e88, #d97706)",
+                  boxShadow: "0 0 6px rgba(217,119,6,0.5)",
+                }}
+              />
+            </div>
+          </div>
+        ) : player.xp_next_level === null ? (
+          <p className="font-inter text-xs text-amber-600 mt-1">已達頂級</p>
+        ) : null}
       </div>
 
       {/* HP / MP 條 */}
@@ -124,12 +156,12 @@ export function StatsPanel({ player }: Props) {
 
       {/* 六維屬性 — 滑鼠移到屬性上可見說明 */}
       <div className="px-1">
-        <StatRow label="力量 STR" value={player.str ?? 8} tooltip={STAT_TOOLTIPS.STR}/>
-        <StatRow label="敏捷 DEX" value={player.dex ?? 8} tooltip={STAT_TOOLTIPS.DEX}/>
-        <StatRow label="智力 INT" value={player.int ?? 8} tooltip={STAT_TOOLTIPS.INT}/>
-        <StatRow label="智慧 WIS" value={player.wis ?? 8} tooltip={STAT_TOOLTIPS.WIS}/>
-        <StatRow label="魅力 CHA" value={player.cha ?? 8} tooltip={STAT_TOOLTIPS.CHA}/>
-        <StatRow label="幸運 LUK" value={player.luk ?? 8} tooltip={STAT_TOOLTIPS.LUK}/>
+        <StatRow label="力量 STR" value={player.str ?? 8} tooltip={STAT_TOOLTIPS.STR} onAllocate={hasPoints && onAllocateStat ? () => onAllocateStat("str") : undefined}/>
+        <StatRow label="敏捷 DEX" value={player.dex ?? 8} tooltip={STAT_TOOLTIPS.DEX} onAllocate={hasPoints && onAllocateStat ? () => onAllocateStat("dex") : undefined}/>
+        <StatRow label="智力 INT" value={player.int ?? 8} tooltip={STAT_TOOLTIPS.INT} onAllocate={hasPoints && onAllocateStat ? () => onAllocateStat("int") : undefined}/>
+        <StatRow label="感知 WIS" value={player.wis ?? 8} tooltip={STAT_TOOLTIPS.WIS} onAllocate={hasPoints && onAllocateStat ? () => onAllocateStat("wis") : undefined}/>
+        <StatRow label="魅力 CHA" value={player.cha ?? 8} tooltip={STAT_TOOLTIPS.CHA} onAllocate={hasPoints && onAllocateStat ? () => onAllocateStat("cha") : undefined}/>
+        <StatRow label="幸運 LUK" value={player.luk ?? 8} tooltip={STAT_TOOLTIPS.LUK} onAllocate={hasPoints && onAllocateStat ? () => onAllocateStat("luk") : undefined}/>
       </div>
 
       {/* 升級點數（有未分配點數時顯示） */}

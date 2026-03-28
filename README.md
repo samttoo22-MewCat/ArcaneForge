@@ -42,6 +42,8 @@
 | `server/api/dm.py` | ✅ | DM 裁決提交端點（Step 6 回傳裁決結果） |
 | `server/api/sse.py` | ✅ | SSE 連線端點 |
 | `server/api/health.py` | ✅ | 健康檢查端點 |
+| `server/api/auth.py` | ✅ | **OpenRouter OAuth proxy**：`/auth/exchange` 代理 code 換取 API Key，`/auth/revoke` 撤銷授權 |
+| `server/api/debug.py` | ✅ | 前端 debug log 轉印至伺服器終端（`/debug/log`） |
 | `server/engine/combat.py` | ✅ | 充能條系統、回合順序、傷害公式（含 DM modifier 套用） |
 | `server/engine/dice.py` | ✅ | 骰子系統：1d20、傷害隨機係數、速度擾動 |
 | `server/engine/grab_contest.py` | ✅ | 搶奪骰子公式（先手加值 + DM dice_bonus） |
@@ -65,12 +67,12 @@
 
 | 元件 | 狀態 | 說明 |
 |------|------|------|
-| `LoginScreen.tsx` | ✅ | 玩家登入 / 創建角色 |
+| `LoginScreen.tsx` | ✅ | 玩家登入 / 創建角色；**必須完成 OpenRouter OAuth 授權才能進入世界** |
 | `Header.tsx` | ✅ | 頂部欄（玩家名稱、DM Key 指示燈、連線狀態）；已移除 HP/MP 迷你欄 |
 | `MapView.tsx` | ✅ | 場景描述、出口列表、NPC 清單 |
 | `ActionBar.tsx` | ✅ | 指令輸入列（說話 / 行動 Tab）；已修復「行動」Tab 無法送出的 Bug |
 | `EventLog.tsx` | ✅ | SSE 事件串流顯示（即時接收伺服器廣播）；說話事件使用樂觀更新立即顯示 |
-| `StatsPanel.tsx` | ✅ | 屬性面板：HP/MP 條、等級/職業、**六維屬性（STR/DEX/INT/WIS/CHA/LUK）**；hover 顯示屬性說明 tooltip |
+| `StatsPanel.tsx` | ✅ | 屬性面板：HP/MP 條、等級/職業、**六維屬性（STR/DEX/INT/感知/CHA/LUK）**；hover 顯示屬性說明 tooltip |
 | `DialogueModal.tsx` | ✅ | NPC 對話模態：可自由輸入文字向 NPC 說話，所有在場 NPC 透過客戶端 SLM 生成回應 |
 | `BackpackPanel.tsx` | ✅ | 背包介面 |
 | `InventoryPanel.tsx` | ✅ | 物品詳情 |
@@ -81,7 +83,7 @@
 | 模組 | 狀態 | 說明 |
 |------|------|------|
 | `caller.ts` | ✅ | 接收伺服器簽署封包 → 呼叫玩家 DM LLM（`google/gemini-3.1-flash-lite-preview`） → 回傳裁決 |
-| `slm_renderer.ts` | ✅ | SSE 事件 → 玩家 SLM（`qwen/qwen3.5-flash-02-23`）渲染文字描述；`generateNpcResponse()` 生成 NPC 現場回應 |
+| `slm_renderer.ts` | ✅ | SSE 事件 → 玩家 SLM（`google/gemini-3.1-flash-lite-preview`）渲染文字描述；`generateNpcResponse()` 生成 NPC 現場回應 |
 | `validator.ts` | ✅ | 客戶端裁決格式驗證 |
 
 #### 靜態遊戲資料（`/data`）
@@ -149,7 +151,7 @@
 | **前端** | React 18 · TypeScript · Vite · Tailwind CSS |
 | **即時通訊** | SSE（伺服器推播）· HTTP REST（客戶端請求） |
 | **DM 模型** | `google/gemini-3.1-flash-lite-preview`（via OpenRouter，玩家自備 Key） |
-| **SLM 模型** | `qwen/qwen3.5-flash-02-23`（via OpenRouter，玩家自備 Key） |
+| **SLM 模型** | `google/gemini-3.1-flash-lite-preview`（via OpenRouter，玩家自備 Key） |
 | **安全** | HMAC-SHA256 封包簽署 · Nonce 防重放 · 四層 DM 裁決驗證 |
 
 ---
@@ -163,7 +165,7 @@
 | **STR 力量** | 物理攻擊與蠻力 | 近戰傷害、破門、壓制判定 |
 | **DEX 敏捷** | 速度與精準 | 潛行、遠程精準、先手順序、閃躲 |
 | **INT 智力** | 奧術學識與邏輯 | 法術傷害、鑑識物品、破解機關謎題 |
-| **WIS 智慧** | 直覺感知與靈性 | 神聖/治癒魔法、偵測陷阱、洞察 NPC 意圖、抗精神操控 |
+| **WIS 感知** | 直覺感知與靈性 | 神聖/治癒魔法、偵測陷阱、洞察 NPC 意圖、抗精神操控 |
 | **CHA 魅力** | 社交與領袖氣場 | 說服/威脅/賄賂判定、NPC 初始好感度 |
 | **LUK 幸運** | 命運之力 | 暴擊率、稀有掉落、偶發事件結果 |
 
@@ -222,10 +224,10 @@ npm run dev
 
 前端預設在 `http://localhost:5173`。
 
-### 4. 設定 API Key（玩家端）
+### 4. 登入並授權（玩家端）
 
-在前端登入介面設定你的 LLM API Key（OpenAI / Gemini / OpenRouter 相容 API）。  
-Key 只存在本地客戶端，不會傳送至遊戲伺服器。
+在前端登入介面輸入玩家 ID，點擊「**使用 OpenRouter 帳號授權**」完成 OAuth 登入。
+API Key 透過 OAuth 取得後只存在本地客戶端，不會傳送至遊戲伺服器。
 
 ---
 
@@ -293,7 +295,7 @@ ArcaneForge/
 | **任務系統** | `quest_giver` NPC 觸發、任務追蹤、獎勵分配 |
 | **世界時間軸** | 日夜循環影響 NPC 行為和場景描述 |
 | **自架伺服器支援** | 完整私服部署文件 + Docker Compose 一鍵啟動 |
-| **非技術玩家友善 UI** | API Key 設定精靈，降低技術門檻 |
+| **非技術玩家友善 UI** | ~~API Key 設定精靈~~ 已完成 OpenRouter OAuth 授權流程 ✅ |
 
 ---
 
@@ -304,7 +306,7 @@ ArcaneForge/
 | 方案 C 無法完全防作弊 | 中 | 四層邏輯驗證 + 可疑行為旗標追蹤 |
 | 延遲演算無法處理跨區域 NPC 互動 | 中 | 全局事件系統補充（規劃中） |
 | SLM 渲染品質因玩家模型差異而不一致 | 低 | 屬於客戶端自理範疇 |
-| 非技術玩家的 API Key 設定門檻 | 中 | 需要完善的文件與 UI 引導 |
+| 非技術玩家的 API Key 設定門檻 | 低 | 已改為 OpenRouter OAuth 一鍵授權，無需手動貼 Key |
 
 ---
 

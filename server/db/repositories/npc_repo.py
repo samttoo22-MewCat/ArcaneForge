@@ -39,6 +39,17 @@ async def get_npcs_in_place(graph, place_id: str) -> list[dict]:
     return [row[0].properties for row in r.result_set]
 
 
+async def get_hostile_npcs_in_middle(graph, middle_id: str) -> list[dict]:
+    """Return all non-dead NPCs located in any room of the given middle_place."""
+    r = await graph.query(
+        """MATCH (s:small_place {parent_middle_id: $mid}), (n:npc)
+           WHERE n.current_place_id = s.id AND n.behavior_state <> 'dead'
+           RETURN n""",
+        {"mid": middle_id},
+    )
+    return [row[0].properties for row in r.result_set]
+
+
 async def create_npc(graph, props: dict) -> None:
     props.setdefault("status_effects", [])
     props.setdefault("hostility_toward", [])

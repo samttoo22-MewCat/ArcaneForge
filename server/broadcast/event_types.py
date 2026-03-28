@@ -201,3 +201,36 @@ class StatusEffectAppliedEvent(BaseEvent):
     stacks: int = 1
     source_id: str = ""
     room_id: str = ""
+
+
+@dataclass
+class PlayerLeveledUpEvent(BaseEvent):
+    event_type: str = "player_leveled_up"
+    player_id: str = ""
+    player_name: str = ""
+    new_level: int = 0
+    stat_points_gained: int = 3
+
+
+@dataclass
+class NPCAlertEvent(BaseEvent):
+    """Broadcast to a middle_place when hostile NPCs detect an intruder in an adjacent room."""
+    event_type: str = "npc_alert"
+    middle_id: str = ""
+    place_id: str = ""      # room that triggered the alert
+    trigger: str = ""       # "player_entered" | "combat_started"
+    message: str = ""       # display text for clients
+
+
+@dataclass
+class NPCPersuasionEvent(BaseEvent):
+    """Broadcast after a persuade/threaten/bribe social action is resolved."""
+    event_type: str = "npc_persuasion"
+    npc_id: str = ""
+    npc_name: str = ""
+    player_id: str = ""
+    player_name: str = ""
+    intent: str = ""        # "persuade" | "threaten" | "bribe"
+    tier: str = ""          # "large_success" | ... | "large_failure"
+    narrative: str = ""     # DM-generated outcome description
+    disposition: int = 0    # NPC's new disposition value toward this player

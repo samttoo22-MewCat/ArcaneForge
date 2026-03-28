@@ -58,6 +58,74 @@ def _trim_item(item: dict, master: dict | None = None) -> dict:
     return base
 
 
+def build_npc_persuasion_prompt(
+    player: dict,
+    npc: dict,
+    player_message: str,
+    intent: str,          # "persuade" | "threaten" | "bribe"
+    memory_summary: str,
+) -> dict:
+    """
+    Build a structured DM prompt for social actions (persuade/threaten/bribe) against an NPC.
+    intent maps to relevant stat: persuade→cha, threaten→str, bribe→luk
+    """
+    action_rules = _load_action_rules()
+    intent_stat = {"persuade": "cha", "threaten": "str", "bribe": "luk"}.get(intent, "cha")
+    intent_zh = {"persuade": "說服", "threaten": "威脅", "bribe": "賄賂"}.get(intent, intent)
+
+    return {
+        "world_rules": _load_world_rules()[:800],
+        "action_rules": action_rules,
+        "npc": {
+            "id": npc.get("id"),
+            "name": npc.get("name"),
+            "hp": npc.get("hp"),
+            "behavior_state": npc.get("behavior_state"),
+            "faction": npc.get("faction"),
+            "npc_type": npc.get("npc_type"),
+            "disposition": npc.get("disposition", 0),
+            "memory_summary": memory_summary or "",
+        },
+        "player": {
+            "id": player.get("id"),
+            "name": player.get("name"),
+            "level": player.get("level", 1),
+            "classes": player.get("classes", []),
+            "str": player.get("str", 8),
+            "dex": player.get("dex", 8),
+            "int": player.get("int", 8),
+            "wis": player.get("wis", 8),
+            "cha": player.get("cha", 8),
+            "luk": player.get("luk", 8),
+        },
+        "player_message": player_message,
+        "intent": intent,
+        "intent_zh": intent_zh,
+        "output_schema": {
+            "feasible": "bool — false if the action is clearly impossible (e.g. dead NPC, NPC is mid-combat)",
+            "violation_reason": "string — required when feasible is false",
+            "action_type": "social",
+            "relevant_stat": f"{intent_stat} — use {intent_stat} for {intent_zh} checks",
+            "difficulty": "int -10 to +10 — modifier based on NPC disposition and context (positive=easier)",
+            "threshold": "int 8-18 — DC based on difficulty of the request",
+            "outcomes": {
+                "large_success":  {"narrative": "string max 100 chars — NPC fully agrees or is deeply moved", "effect_type": "social_outcome", "status_to_apply": None, "status_target": None, "item_consumed": None},
+                "medium_success": {"narrative": "string max 100 chars", "effect_type": "social_outcome", "status_to_apply": None, "status_target": None, "item_consumed": None},
+                "small_success":  {"narrative": "string max 100 chars", "effect_type": "social_outcome", "status_to_apply": None, "status_target": None, "item_consumed": None},
+                "small_failure":  {"narrative": "string max 100 chars", "effect_type": "social_outcome", "status_to_apply": None, "status_target": None, "item_consumed": None},
+                "medium_failure": {"narrative": "string max 100 chars", "effect_type": "social_outcome", "status_to_apply": None, "status_target": None, "item_consumed": None},
+                "large_failure":  {"narrative": "string max 100 chars — NPC is offended or becomes hostile", "effect_type": "social_outcome", "status_to_apply": None, "status_target": None, "item_consumed": None},
+            },
+            "_rules": [
+                "You MUST return all six outcome keys.",
+                "effect_type MUST be social_outcome for all outcomes.",
+                "Narratives should reflect the NPC's memory_summary and current disposition.",
+                "Do NOT include any damage numbers.",
+            ],
+        },
+    }
+
+
 def build_action_prompt(
     player: dict,
     scene: dict,

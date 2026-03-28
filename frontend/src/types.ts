@@ -19,6 +19,7 @@ export interface Player {
   // Progression
   level: number;
   xp: number;
+  xp_next_level?: number | null;
   stat_points: number;
   classes: string[];
   // Travel
@@ -157,7 +158,10 @@ export type EventKind =
   | "system_announcement"
   | "grab_contest_open"
   | "grab_contest_resolved"
-  | "dm_ruling_applied";
+  | "dm_ruling_applied"
+  | "player_leveled_up"
+  | "npc_alert"
+  | "npc_persuasion";
 
 export interface GameEvent {
   id: string;
@@ -171,4 +175,62 @@ export interface GameState {
   look: LookResult | null;
   events: GameEvent[];
   connected: boolean;
+}
+
+// ── Skill / Spell system ──────────────────────────────────────────────────────
+
+export interface Ability {
+  id: string;
+  name: string;
+  description: string;
+  mp_cost: number;
+  cooldown_turns: number;
+  cooldown_seconds_remaining: number;
+  is_unlocked: boolean;
+  locked_reason: string;
+  effect_type: string;
+  tags: string[];
+  target?: string;   // "self" | "single" | "aoe" | "single_friendly"
+  element?: string;  // spells only
+  ability_type: "skill" | "spell";
+  is_passive: boolean;
+}
+
+export interface AbilitiesData {
+  abilities: Ability[];
+}
+
+// ── Crafting system ───────────────────────────────────────────────────────────
+
+export interface CraftIngredient {
+  item_id: string;
+  name: string;
+  needed: number;
+  have: number;
+  sufficient: boolean;
+}
+
+export interface CraftableItem {
+  item_id: string;
+  name: string;
+  description: string;
+  category: string;
+  can_craft: boolean;
+  ingredients: CraftIngredient[];
+}
+
+export interface CraftableData {
+  craftable: CraftableItem[];
+}
+
+export interface UseSkillResult {
+  success: boolean;
+  ability_name: string;
+  mp_remaining: number;
+  damage: number;
+  heal: number;
+  status_applied: string | null;
+  narrative_hint: string;
+  target_hp_remaining: number | null;
+  target_defeated: boolean;
 }
